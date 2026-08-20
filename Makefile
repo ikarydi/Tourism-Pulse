@@ -8,3 +8,5 @@ lint:
 
 format:
 	ruff format .
+run:
+	uvicorn tourism_pulse_api.main:app --reload --app-dir apps/api/src
