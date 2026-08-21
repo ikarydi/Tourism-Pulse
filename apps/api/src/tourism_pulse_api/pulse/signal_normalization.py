@@ -4,6 +4,9 @@ from tourism_pulse_api.pulse.normalization import (
     normalize_percentage,
     normalize_sentiment,
 )
+from tourism_pulse_api.pulse.airport_traffic import normalize_airport_traffic
+from tourism_pulse_api.pulse.news_mentions import normalize_news_mentions
+from tourism_pulse_api.pulse.news_sentiment import normalize_news_tone
 from tourism_pulse_api.pulse.poi_density import (
     normalize_hotel_count,
     normalize_restaurant_count,
@@ -26,6 +29,11 @@ SIGNAL_NORMALIZERS: dict[str, Normalizer] = {
     "restaurant_count": normalize_restaurant_count,
     # YouTube search-result counts - see pulse.search_interest.
     "search_interest": normalize_search_interest,
+    # GDELT news coverage - see pulse.news_mentions / pulse.news_sentiment.
+    "news_mentions": normalize_news_mentions,
+    "news_sentiment": normalize_news_tone,
+    # OpenSky airborne-aircraft count - see pulse.airport_traffic.
+    "airport_traffic": normalize_airport_traffic,
 }
 
 

@@ -40,6 +40,13 @@ DEFAULT_HALF_LIFE_HOURS: dict[str, float] = {
     # re-ingestion cadence is assumed here; revisit once real re-run
     # frequency is established.
     "search_interest": 72.0,
+    # News coverage volume/tone can shift within a day around a breaking
+    # story - same cadence assumption as "sentiment" above.
+    "news_mentions": 24.0,
+    "news_sentiment": 24.0,
+    # A live airspace snapshot, same reasoning as weather_comfort - stale
+    # fast.
+    "airport_traffic": 6.0,
 }
 
 

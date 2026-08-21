@@ -1,0 +1,34 @@
+{
+  "articles": [
+    {
+      "url": "https://privatbankar.hu/cikkek/turizmus/egy-felhavi-magyar-fizetesbe-faj-a-kulfoldieknek-a-sziget.html",
+      "url_mobile": "",
+      "title": "Egy felhavi magyar fizetesbe faj a kulfoldieknek a Sziget",
+      "seendate": "20260819T140000Z",
+      "socialimage": "https://privatbankar.hu/i/example.jpg",
+      "domain": "privatbankar.hu",
+      "language": "Hungarian",
+      "sourcecountry": "Hungary"
+    },
+    {
+      "url": "https://example.com/budapest-transit-schedule",
+      "url_mobile": "",
+      "title": "Budapest transit schedule changes for August 20th celebrations",
+      "seendate": "20260819T091500Z",
+      "socialimage": "",
+      "domain": "example.com",
+      "language": "English",
+      "sourcecountry": "Hungary"
+    },
+    {
+      "url": "https://example.com/budapest-tourism-record",
+      "url_mobile": "",
+      "title": "Budapest tourism numbers hit new record this summer",
+      "seendate": "20260818T173000Z",
+      "socialimage": "",
+      "domain": "example.com",
+      "language": "English",
+      "sourcecountry": "United States"
+    }
+  ]
+}

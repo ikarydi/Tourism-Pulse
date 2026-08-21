@@ -21,6 +21,15 @@ DIMENSION_MAP: dict[str, str] = {
     # sentiment/occupancy/tourism_nights as another piece of demand-side
     # evidence (spec section 6.3 lists search_interest explicitly).
     "search_interest": "demand",
+    # GDELT news coverage volume and tone - see pulse.news_mentions /
+    # pulse.news_sentiment. Grouped with demand for the same reason as
+    # search_interest above.
+    "news_mentions": "demand",
+    "news_sentiment": "demand",
+    # OpenSky airborne-aircraft count near a destination - a live proxy
+    # for transport activity (spec 6.3's airport_arrivals in spirit, not
+    # literally a per-period arrivals count - see pulse.airport_traffic).
+    "airport_traffic": "demand",
 }
 
 
