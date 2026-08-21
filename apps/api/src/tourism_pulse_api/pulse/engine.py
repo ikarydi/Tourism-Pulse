@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from unicodedata import name
 
-from sqlalchemy import values
 from tourism_pulse_api.pulse.calculator import PulseCalculator, PulseResult
 from tourism_pulse_api.pulse.confidence import (
     ConfidenceResult,
