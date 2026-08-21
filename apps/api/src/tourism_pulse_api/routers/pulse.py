@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from functools import partial
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -15,6 +16,9 @@ from tourism_pulse_api.pulse.seasonal_signal_adapter import (
 )
 from tourism_pulse_api.pulse.signal_normalization import SIGNAL_NORMALIZERS
 from tourism_pulse_api.pulse.signal_processing import process_signal
+from tourism_pulse_api.pulse.source_registry import (
+    get_source_reliability as get_registry_source_reliability,
+)
 from tourism_pulse_api.pulse.trend_analysis import analyze_trend
 from tourism_pulse_api.schemas.pulse import (
     PulseConfidenceRead,
@@ -141,7 +145,10 @@ def calculate_place_pulse(
         else None
     )
 
-    result = PulseEngine().calculate(
+    engine = PulseEngine(
+        reliability_lookup=partial(get_registry_source_reliability, db),
+    )
+    result = engine.calculate(
         signals=processed_signals,
         previous_pulse=previous_pulse,
     )

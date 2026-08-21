@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from tourism_pulse_api.pulse.calculator import PulseCalculator, PulseResult
@@ -9,7 +10,9 @@ from tourism_pulse_api.pulse.effective_signal import (
     calculate_effective_signal,
 )
 from tourism_pulse_api.pulse.freshness import calculate_freshness
-from tourism_pulse_api.pulse.reliability import get_source_reliability
+from tourism_pulse_api.pulse.reliability import (
+    get_source_reliability as get_dict_source_reliability,
+)
 from tourism_pulse_api.pulse.trend import TrendResult, calculate_trend
 
 
@@ -30,8 +33,18 @@ class EngineResult:
 
 
 class PulseEngine:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        reliability_lookup: Callable[[str], float] = get_dict_source_reliability,
+    ) -> None:
+        # Defaults to the dict-based lookup so the engine stays a pure,
+        # DB-free class - its own unit tests construct SignalInput directly
+        # and never touch a database. routers/pulse.py passes a
+        # DB-backed lookup (pulse.source_registry.get_source_reliability,
+        # partially applied with the request's Session) so production
+        # reliability comes from the Source Registry instead.
         self.calculator = PulseCalculator()
+        self._reliability_lookup = reliability_lookup
 
     def calculate(
         self,
@@ -69,7 +82,7 @@ class PulseEngine:
                 signal.half_life_hours,
             )
 
-            reliability = get_source_reliability(signal.source)
+            reliability = self._reliability_lookup(signal.source)
 
             effective = calculate_effective_signal(
                 signal.normalized_value,
