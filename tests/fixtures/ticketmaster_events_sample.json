@@ -1,0 +1,130 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "id": "vvG1zZbn23aAAo",
+        "name": "Budapest Summer Music Festival",
+        "type": "event",
+        "url": "https://www.ticketmaster.com/event/vvG1zZbn23aAAo",
+        "info": "Three days of live music on the Danube.",
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {"id": "KZFzniwnSyZfZ7v7nJ", "name": "Music"},
+            "genre": {"id": "KnvZfZ7vAe1", "name": "Festival"},
+            "subGenre": {"id": "KZazBEonSMnZfZ7v6F1", "name": "Festival"}
+          }
+        ],
+        "dates": {
+          "start": {"localDate": "2026-08-28", "dateTime": "2026-08-28T18:00:00Z"},
+          "end": {"localDate": "2026-08-30", "dateTime": "2026-08-30T23:00:00Z"},
+          "status": {"code": "onsale"}
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Danube Waterfront",
+              "city": {"name": "Budapest"},
+              "location": {"latitude": "47.4979", "longitude": "19.0402"}
+            }
+          ]
+        }
+      },
+      {
+        "id": "G5vYZbW3nS9k1",
+        "name": "Ferencvaros vs Ujpest",
+        "type": "event",
+        "url": "https://www.ticketmaster.com/event/G5vYZbW3nS9k1",
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {"id": "KZFzniwnSyZfZ7v7nE", "name": "Sports"},
+            "genre": {"id": "KnvZfZ7vAvv", "name": "Soccer"},
+            "subGenre": {"id": "KZazBEonSMnZfZ7vFbE", "name": "Domestic"}
+          }
+        ],
+        "dates": {
+          "start": {"localDate": "2026-08-25", "dateTime": "2026-08-25T17:00:00Z"},
+          "status": {"code": "onsale"}
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Groupama Arena",
+              "city": {"name": "Budapest"},
+              "location": {"latitude": "47.4739", "longitude": "19.0956"}
+            }
+          ]
+        }
+      },
+      {
+        "id": "vv1tZbW3AeVzZ2",
+        "name": "Swan Lake - Hungarian National Ballet",
+        "type": "event",
+        "url": "https://www.ticketmaster.com/event/vv1tZbW3AeVzZ2",
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {"id": "KZFzniwnSyZfZ7v7na", "name": "Arts & Theatre"},
+            "genre": {"id": "KnvZfZ7v7l1", "name": "Ballet"},
+            "subGenre": {"id": "KZazBEonSMnZfZ7vAve", "name": "Ballet"}
+          }
+        ],
+        "dates": {
+          "start": {"localDate": "2026-09-02", "dateTime": "2026-09-02T19:00:00Z"},
+          "status": {"code": "onsale"}
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Hungarian State Opera House",
+              "city": {"name": "Budapest"},
+              "location": {"latitude": "47.5025", "longitude": "19.0587"}
+            }
+          ]
+        }
+      },
+      {
+        "id": "vvXqZbW3nMisc1",
+        "name": "Community Craft Fair",
+        "type": "event",
+        "url": "https://www.ticketmaster.com/event/vvXqZbW3nMisc1",
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {"id": "KZFzniwnSyZfZ7vAka", "name": "Miscellaneous"}
+          }
+        ],
+        "dates": {
+          "start": {"localDate": "2026-08-23", "dateTime": "2026-08-23T09:00:00Z"},
+          "status": {"code": "onsale"}
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "City Park",
+              "city": {"name": "Budapest"}
+            }
+          ]
+        }
+      },
+      {
+        "id": "vvTBAZbW3n0000",
+        "name": "TBA Announcement Show",
+        "type": "event",
+        "url": "https://www.ticketmaster.com/event/vvTBAZbW3n0000",
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {"id": "KZFzniwnSyZfZ7v7nJ", "name": "Music"}
+          }
+        ],
+        "dates": {
+          "start": {"localDate": "TBA", "dateTBA": true, "dateTBD": false, "timeTBA": true, "noSpecificTime": true},
+          "status": {"code": "onsale"}
+        }
+      }
+    ]
+  },
+  "page": {"size": 50, "totalElements": 5, "totalPages": 1, "number": 0}
+}

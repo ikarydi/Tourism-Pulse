@@ -1,0 +1,19 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "dimension": {
+    "freq": {"category": {"index": {"M": 0}}},
+    "accomunit": {"category": {"index": {"BEDPL": 0}}},
+    "unit": {"category": {"index": {"PC": 0}}},
+    "geo": {"category": {"index": {"AT": 0}, "label": {"AT": "Austria"}}},
+    "time": {
+      "category": {
+        "index": {"2026-01": 0, "2026-02": 1, "2026-03": 2, "2026-04": 3, "2026-05": 4},
+        "label": {"2026-01": "2026-01", "2026-02": "2026-02", "2026-03": "2026-03", "2026-04": "2026-04", "2026-05": "2026-05"}
+      }
+    }
+  },
+  "id": ["freq", "accomunit", "unit", "geo", "time"],
+  "size": [1, 1, 1, 1, 5],
+  "value": {"0": 67.2, "1": 75.2, "2": 50.3, "3": 35.9, "4": 34.3}
+}

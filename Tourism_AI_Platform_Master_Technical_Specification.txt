@@ -1,0 +1,2566 @@
+TOURISM AI PLATFORM
+MASTER TECHNICAL SPECIFICATION
+Version 1.0
+Status: Master Architecture / Product Blueprint
+
+======================================================================
+1. EXECUTIVE SUMMARY
+======================================================================
+
+Tourism AI Platform is a multi-layer artificial-intelligence platform
+for tourism. It is not merely a dashboard and Tourism Pulse is not the
+whole product.
+
+The platform combines three core intelligence models:
+
+1. Traveler DNA
+   Models who a traveler is, how they travel, what they prefer, and how
+   their behavior changes.
+
+2. Tourism Pulse
+   Models what is happening in a destination now: demand, capacity,
+   events, environment, confidence, trends and anomalies.
+
+3. Destination Twin
+   Models the destination itself: geography, infrastructure, tourism
+   assets, businesses, visitor flows, economic activity, environment,
+   events, constraints and scenarios.
+
+These three models feed a shared Tourism Knowledge Graph.
+
+The Knowledge Graph feeds an AI Agent layer containing, initially:
+
+- Traveler Agent
+- Business Agent
+- City Agent
+
+Additional specialized agents can later be added.
+
+All of this is exposed through Tourism Studio, the operating environment
+for travelers, tourism businesses, destination authorities and other
+professional users.
+
+The platform therefore follows:
+
+DATA
+  ->
+SIGNALS
+  ->
+INTELLIGENCE MODELS
+  ->
+KNOWLEDGE GRAPH
+  ->
+AI AGENTS
+  ->
+TOURISM STUDIO
+  ->
+DECISIONS / ACTIONS
+
+The existing Tourism Pulse implementation is the first working analytical
+subsystem of this larger architecture.
+
+
+======================================================================
+2. PLATFORM VISION
+======================================================================
+
+The long-term goal is to build an AI operating system for tourism.
+
+The platform should answer questions such as:
+
+Traveler:
+    Where should I go?
+    When should I go?
+    What should I do?
+    What destination best matches me?
+    How will weather, events and crowding affect my trip?
+
+Business:
+    What will demand look like?
+    Why is demand changing?
+    Which traveler segments are growing?
+    What events will affect my business?
+    What should I prepare for?
+
+City / DMO:
+    What is happening to tourism?
+    Why is it changing?
+    What are the risks?
+    What happens if tourism grows 20%?
+    What policies or investments should we consider?
+
+Developer:
+    What is the current tourism Pulse of a destination?
+    What is the forecast?
+    Which destinations are growing?
+    What tourism data can be integrated into my application?
+
+Media / Content:
+    What happened in tourism today?
+    Which destinations are changing?
+    What story should be produced?
+
+
+======================================================================
+3. TOP-LEVEL ARCHITECTURE
+======================================================================
+
+                         TOURISM AI PLATFORM
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+     TRAVELER DNA           TOURISM PULSE          DESTINATION TWIN
+          |                       |                       |
+          +-----------------------+-----------------------+
+                                  |
+                       TOURISM KNOWLEDGE GRAPH
+                                  |
+                           AI AGENT PLATFORM
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+     TRAVELER AGENT         BUSINESS AGENT          CITY AGENT
+          |                       |                       |
+          +-----------------------+-----------------------+
+                                  |
+                           TOURISM STUDIO
+                                  |
+       +--------------------------+--------------------------+
+       |                          |                          |
+   TRAVELER STUDIO          BUSINESS STUDIO             CITY STUDIO
+
+
+Underlying all layers:
+
+                         TOURISM DATA PLATFORM
+                                  |
+       +--------------------------+--------------------------+
+       |                          |                          |
+   DATA SOURCES              DATA LAKE                 DATA APIs
+       |                          |                          |
+       +--------------------------+--------------------------+
+                                  |
+                         DATA GOVERNANCE
+                                  |
+                           DATA QUALITY
+                                  |
+                              LINEAGE
+                                  |
+                         INFRASTRUCTURE
+
+
+======================================================================
+4. ARCHITECTURAL PRINCIPLES
+======================================================================
+
+4.1 Evidence before intelligence
+
+AI must not be the source of truth for quantitative tourism metrics.
+
+Raw evidence is collected first. Deterministic analytical systems
+calculate metrics. AI interprets and acts on those metrics.
+
+4.2 Preserve raw data
+
+Raw observations must remain recoverable.
+
+The transformation chain must be traceable:
+
+SOURCE
+  ->
+RAW OBSERVATION
+  ->
+VALIDATED OBSERVATION
+  ->
+NORMALIZED SIGNAL
+  ->
+EFFECTIVE SIGNAL
+  ->
+DIMENSION
+  ->
+INTELLIGENCE
+  ->
+AI INTERPRETATION
+
+4.3 Explainability
+
+Every important result must be explainable.
+
+A user asking:
+
+    "Why is Budapest Demand 68?"
+
+must eventually be able to see the underlying signals and their sources.
+
+4.4 Confidence is first-class
+
+Every major intelligence output should communicate confidence and
+coverage.
+
+4.5 Time awareness
+
+Tourism data has different frequencies. A monthly government statistic
+must not be represented as real-time data.
+
+4.6 Seasonal awareness
+
+Tourism is strongly seasonal. Models must distinguish normal seasonal
+behavior from unusual changes.
+
+4.7 Modular domains
+
+Traveler DNA, Tourism Pulse and Destination Twin must remain independent
+domains with explicit interfaces.
+
+4.8 Start simple, scale when justified
+
+Do not introduce Kafka, Kubernetes, graph databases or distributed
+processing until actual scale or functionality requires them.
+
+4.9 API-first
+
+The platform should expose stable APIs so the same intelligence can be
+used by web, mobile, agents and external customers.
+
+4.10 Privacy by design
+
+Traveler data is potentially sensitive. Personalization must use
+explicit consent, purpose limitation, access controls and retention
+policies.
+
+
+======================================================================
+5. SYSTEM 1 - TRAVELER DNA
+======================================================================
+
+5.1 Purpose
+
+Traveler DNA is a dynamic representation of a traveler's preferences,
+behavior, history and context.
+
+It is not simply a demographic profile.
+
+5.2 Core model
+
+Traveler
+  - traveler_id
+  - account_id
+  - origin
+  - preferred_language
+  - travel_party
+  - budget_profile
+  - created_at
+  - updated_at
+
+5.3 Preference dimensions
+
+Examples:
+
+- culture
+- food
+- nightlife
+- beach
+- nature
+- adventure
+- luxury
+- family
+- business
+- wellness
+- shopping
+- history
+- sports
+
+Each preference should have:
+
+- value
+- confidence
+- evidence_count
+- last_updated
+
+5.4 Behavioral attributes
+
+Examples:
+
+- booking_horizon
+- average_trip_duration
+- average_budget
+- price_sensitivity
+- weather_sensitivity
+- crowd_tolerance
+- event_sensitivity
+- seasonality
+- preferred_transport
+- preferred_accommodation
+
+5.5 Traveler history
+
+Possible entities:
+
+- trips
+- destinations visited
+- attractions visited
+- bookings
+- searches
+- saved destinations
+- recommendations accepted
+- recommendations rejected
+
+5.6 Dynamic DNA
+
+Traveler DNA must evolve from behavior.
+
+Example:
+
+Initial:
+    culture = 0.60
+    nightlife = 0.40
+
+After repeated cultural trips:
+    culture = 0.82
+
+The system must preserve the evidence behind changes.
+
+5.7 Privacy
+
+Traveler DNA requires:
+
+- explicit consent
+- data minimization
+- purpose limitation
+- deletion capability
+- export capability
+- encryption
+- strict tenant isolation
+- audit logging
+
+No sensitive personal attribute should be inferred merely because it is
+technically possible.
+
+
+======================================================================
+6. SYSTEM 2 - TOURISM PULSE
+======================================================================
+
+6.1 Purpose
+
+Tourism Pulse answers:
+
+    "What is happening in a destination now?"
+
+6.2 Core dimensions
+
+Demand
+Capacity
+Events
+Environment
+
+Initial weights:
+
+Demand       0.35
+Capacity     0.25
+Events       0.20
+Environment  0.20
+
+Weights must eventually be configurable.
+
+6.3 Signal model
+
+A signal contains:
+
+- place_id
+- signal_type
+- value
+- unit
+- observed_at
+- source
+- source reliability
+- metadata
+
+Examples:
+
+- tourism_nights
+- hotel_occupancy
+- airport_arrivals
+- flight_capacity
+- search_interest
+- sentiment
+- weather_comfort
+- precipitation
+- event_count
+
+6.4 Signal processing
+
+normalized_value = source-specific normalization(value)
+
+freshness = 0.5 ^ (age_hours / half_life_hours)
+
+effective_signal =
+    normalized_value
+    * freshness
+    * reliability
+
+6.5 Reliability
+
+Current baseline:
+
+government    1.00
+official      1.00
+airport       0.98
+airline       0.98
+hotel         0.95
+booking       0.95
+commercial    0.90
+news          0.85
+social        0.65
+unknown       0.40
+
+Source-specific values should eventually be managed through a source
+registry.
+
+6.6 Confidence
+
+Confidence should incorporate:
+
+- source reliability
+- freshness
+- dimension coverage
+- consistency
+- historical stability
+
+The current implementation uses a simpler confidence model and should
+evolve incrementally.
+
+6.7 Coverage
+
+Coverage = supported dimensions / total dimensions
+
+Example:
+
+Demand       supported
+Capacity     missing
+Events       missing
+Environment  supported
+
+Coverage = 2 / 4 = 50%
+
+Coverage must be displayed rather than hidden.
+
+6.8 Historical snapshots
+
+Pulse snapshots contain:
+
+- place_id
+- calculated_at
+- pulse
+- demand
+- capacity
+- events
+- environment
+- confidence_score
+- confidence_coverage
+
+6.9 Trend
+
+Trend states must distinguish:
+
+UP
+DOWN
+STABLE
+UNKNOWN / INSUFFICIENT_HISTORY
+
+A zero numeric change must not automatically mean stable.
+
+6.10 Anomaly
+
+Anomaly detection should eventually support:
+
+- statistical anomaly
+- seasonal anomaly
+- dimension anomaly
+- source anomaly
+- composite anomaly
+
+6.11 Existing implementation status
+
+Already implemented in the current repository:
+
+- FastAPI API
+- SQLAlchemy models
+- signal processing
+- normalization
+- freshness
+- reliability
+- effective signals
+- dimensions
+- Pulse calculation
+- confidence
+- interpretation
+- events
+- snapshots
+- history
+- trend
+- anomaly endpoints
+- React/Vite dashboard
+- extensive tests
+
+This subsystem is the current technical foundation, not the complete
+Tourism AI Platform.
+
+
+======================================================================
+7. SYSTEM 3 - DESTINATION TWIN
+======================================================================
+
+7.1 Purpose
+
+Destination Twin is a digital model of a destination.
+
+Tourism Pulse represents current tourism conditions.
+
+Destination Twin represents the destination itself and its behavior.
+
+7.2 Physical model
+
+Entities:
+
+- destination
+- country
+- region
+- city
+- district
+- airport
+- railway station
+- road
+- attraction
+- hotel
+- restaurant
+- venue
+- transport network
+
+7.3 Tourism model
+
+Entities:
+
+- visitors
+- arrivals
+- tourism nights
+- hotel capacity
+- occupancy
+- events
+- visitor flows
+- attraction capacity
+- seasonal patterns
+
+7.4 Economic model
+
+Potential entities:
+
+- tourism revenue
+- prices
+- employment
+- business activity
+- accommodation revenue
+- spending
+
+7.5 Environmental model
+
+Potential entities:
+
+- weather
+- temperature
+- precipitation
+- heat
+- air quality
+- flooding
+- extreme weather
+
+7.6 Behavioral model
+
+Potentially:
+
+- visitor density
+- movement patterns
+- attraction demand
+- district flows
+- transport pressure
+
+7.7 Spatial model
+
+PostGIS should provide:
+
+- destination geometry
+- attraction coordinates
+- event locations
+- hotel locations
+- airport locations
+- spatial relationships
+- distance calculations
+- containment
+- proximity
+
+7.8 Simulation
+
+The Twin should eventually support scenarios.
+
+Example:
+
+    Demand +20%
+
+could propagate through:
+
+    visitors
+      ->
+    hotels
+      ->
+    transport
+      ->
+    attractions
+      ->
+    congestion
+      ->
+    economic impact
+
+Another scenario:
+
+    Major event added
+
+could estimate:
+
+- additional visitors
+- accommodation pressure
+- transport pressure
+- expected spending
+- event impact
+
+
+======================================================================
+8. SYSTEM 4 - TOURISM KNOWLEDGE GRAPH
+======================================================================
+
+8.1 Purpose
+
+The Knowledge Graph connects the Traveler, Pulse and Destination Twin
+models.
+
+8.2 Core entities
+
+- Traveler
+- Destination
+- Country
+- City
+- District
+- Attraction
+- Hotel
+- Restaurant
+- Event
+- Airport
+- Flight
+- Transport
+- Weather Event
+- Business
+- Tourism Signal
+- Pulse
+- Forecast
+- Recommendation
+
+8.3 Core relationships
+
+Traveler -> prefers -> AttractionType
+Traveler -> visited -> Destination
+Traveler -> booked -> Hotel
+Traveler -> interested_in -> EventType
+
+Destination -> contains -> Attraction
+Destination -> hosts -> Event
+Destination -> served_by -> Airport
+Destination -> contains -> Hotel
+
+Event -> affects -> Destination
+WeatherEvent -> affects -> Destination
+Pulse -> describes -> Destination
+Forecast -> predicts -> Destination
+
+8.4 Initial implementation
+
+The knowledge graph does not necessarily require a graph database at
+the beginning.
+
+PostgreSQL/PostGIS plus relational relationships can provide the first
+implementation.
+
+A dedicated graph database should be introduced only when graph traversal
+requirements justify it.
+
+8.5 Semantic layer
+
+The graph should eventually contain:
+
+- canonical entity IDs
+- aliases
+- entity types
+- source provenance
+- confidence
+- temporal validity
+- geographic relationships
+
+
+======================================================================
+9. SYSTEM 5 - AI AGENT PLATFORM
+======================================================================
+
+9.1 Principle
+
+Agents are reasoning and action systems over governed platform data.
+
+They must not become independent sources of unverified facts.
+
+9.2 Traveler Agent
+
+Purpose:
+
+    Help an individual discover, plan and adapt travel.
+
+Inputs:
+
+- Traveler DNA
+- Destination Twin
+- Tourism Pulse
+- events
+- weather
+- travel constraints
+
+Capabilities:
+
+- destination discovery
+- itinerary planning
+- activity recommendations
+- adaptive planning
+- weather-aware planning
+- event-aware planning
+- budget optimization
+
+9.3 Business Agent
+
+Purpose:
+
+    Help tourism businesses understand demand and make decisions.
+
+Inputs:
+
+- Tourism Pulse
+- Destination Twin
+- traveler segments
+- events
+- competition
+- forecasts
+
+Capabilities:
+
+- demand analysis
+- market analysis
+- event impact
+- opportunity detection
+- alerts
+- reports
+- recommendations
+
+9.4 City Agent
+
+Purpose:
+
+    Act as an AI tourism strategist for a destination.
+
+Inputs:
+
+- Destination Twin
+- Tourism Pulse
+- traveler segments
+- events
+- weather
+- economic data
+- forecasts
+- risks
+
+Capabilities:
+
+- explain tourism changes
+- identify causes
+- evaluate risks
+- identify opportunities
+- recommend interventions
+- run scenarios
+- generate executive briefings
+
+9.5 Future agents
+
+Potential:
+
+- Hotel Agent
+- Airport Agent
+- Event Agent
+- Marketing Agent
+- Research Agent
+- Forecast Agent
+- Risk Agent
+- Content Agent
+
+9.6 Agent architecture
+
+User
+  ->
+Agent Orchestrator
+  ->
+select specialist agent
+  ->
+retrieve governed context
+  ->
+run deterministic tools
+  ->
+reason
+  ->
+validate evidence
+  ->
+produce answer/action
+
+9.7 Tool use
+
+Agents should have explicit tools for:
+
+- destination lookup
+- Pulse retrieval
+- signal retrieval
+- event search
+- weather lookup
+- knowledge graph traversal
+- forecasting
+- scenario simulation
+- report generation
+
+Tools must have defined schemas and permissions.
+
+
+======================================================================
+10. SYSTEM 6 - TOURISM STUDIO
+======================================================================
+
+10.1 Purpose
+
+Tourism Studio is the user operating environment.
+
+It is not one dashboard.
+
+It is a collection of role-specific experiences.
+
+10.2 Traveler Studio
+
+Sections:
+
+- Traveler DNA
+- Explore
+- Destination comparison
+- Trip planning
+- Itinerary
+- Recommendations
+- Saved trips
+- Alerts
+
+10.3 Business Studio
+
+Sections:
+
+- Business overview
+- Destination Pulse
+- Demand
+- Forecast
+- Competitors
+- Events
+- Traveler segments
+- Recommendations
+- Alerts
+- Reports
+
+10.4 City Studio
+
+Sections:
+
+- Destination Pulse
+- Destination Twin
+- Visitor flows
+- Demand
+- Capacity
+- Events
+- Economic impact
+- Risks
+- Forecast
+- Scenarios
+- Policy / investment analysis
+
+10.5 Executive experience
+
+A concise view:
+
+    What changed?
+    Why?
+    How important?
+    What happens next?
+    What should we do?
+
+10.6 Content Studio
+
+Potentially:
+
+- destination reports
+- daily tourism briefing
+- AI scripts
+- social posts
+- video scripts
+- automated tourism news
+
+
+======================================================================
+11. TOURISM DATA PLATFORM
+======================================================================
+
+11.1 Purpose
+
+Collect, validate, normalize, govern and expose tourism data.
+
+11.2 Source categories
+
+Government:
+- KSH
+- Eurostat
+- national tourism agencies
+
+Transport:
+- airports
+- airlines
+- rail
+- public transport
+
+Accommodation:
+- hotels
+- accommodation statistics
+- booking sources
+
+Events:
+- festivals
+- sports
+- concerts
+- conferences
+
+Environment:
+- weather
+- air quality
+- climate
+
+Behavior:
+- search
+- booking
+- social
+- sentiment
+
+Economic:
+- prices
+- spending
+- employment
+- economic indicators
+
+11.3 Source adapter architecture
+
+Each source should have an adapter.
+
+Conceptually:
+
+    fetch
+      ->
+    parse
+      ->
+    validate
+      ->
+    transform
+      ->
+    normalize
+      ->
+    publish
+
+Adapters should be isolated from the core domain.
+
+11.4 KSH first source
+
+The current implementation roadmap begins with KSH tourism statistics.
+
+KSH data should provide:
+
+- raw tourism nights
+- domestic nights
+- international nights
+- period
+- destination
+- source metadata
+
+The platform must preserve raw values and apply transparent seasonal
+normalization rather than arbitrary conversion to 0-100.
+
+
+======================================================================
+12. RAW DATA AND DATA LAKE
+======================================================================
+
+12.1 Raw data principle
+
+Never discard the source representation.
+
+12.2 Storage layers
+
+Bronze:
+    exact source data
+
+Silver:
+    validated and standardized data
+
+Gold:
+    analytical business datasets
+
+12.3 Potential technologies
+
+Initial:
+    PostgreSQL
+
+Later:
+    object storage
+    Parquet
+    DuckDB / Spark / warehouse engines
+
+12.4 Archive
+
+Raw source files should eventually be archived with:
+
+- source
+- dataset
+- retrieval timestamp
+- source URL
+- checksum
+- schema version
+
+
+======================================================================
+13. DATA GOVERNANCE
+======================================================================
+
+Governance is a first-class subsystem.
+
+Required concepts:
+
+- Data Catalog
+- Source Registry
+- Data Dictionary
+- Business Glossary
+- Data Quality Rules
+- Data Contracts
+- Lineage
+- Classification
+- Retention
+- Access Control
+
+Every important metric should answer:
+
+    What is it?
+    Where did it come from?
+    When was it observed?
+    How was it transformed?
+    How reliable is it?
+    Who can access it?
+
+
+======================================================================
+14. DATA QUALITY
+======================================================================
+
+Checks:
+
+- missing values
+- duplicates
+- invalid units
+- invalid dates
+- impossible ranges
+- outliers
+- stale data
+- schema changes
+- source failures
+- inconsistent totals
+
+Bad data must be rejected or quarantined before it reaches intelligence
+models.
+
+
+======================================================================
+15. DATA LINEAGE
+======================================================================
+
+Every derived value should eventually have a lineage chain.
+
+Example:
+
+    Pulse = 57.2
+      ->
+    Demand = 68.4
+      ->
+    tourism_nights signal
+      ->
+    KSH observation
+      ->
+    KSH source file
+      ->
+    source URL
+
+The UI should eventually support:
+
+    "Why is this number what it is?"
+
+
+======================================================================
+16. FORECASTING
+======================================================================
+
+Forecasting is a later intelligence layer.
+
+Potential outputs:
+
+- next day Pulse
+- next week Pulse
+- next month demand
+- seasonal forecast
+- event impact forecast
+
+Every forecast should include uncertainty.
+
+Example:
+
+    Forecast = 63.2
+    Expected range = 57-69
+    Confidence = 82%
+
+Forecasting should use historical snapshots, signals, seasonality,
+events and external variables.
+
+
+======================================================================
+17. RISK ENGINE
+======================================================================
+
+Potential tourism risks:
+
+- demand collapse
+- capacity shortage
+- overcrowding
+- weather
+- transport disruption
+- event cancellation
+- economic shock
+- geopolitical disruption
+
+Risk should be modeled as:
+
+    probability
+    x
+    impact
+
+with confidence and evidence.
+
+
+======================================================================
+18. RECOMMENDATION ENGINE
+======================================================================
+
+Recommendations must be evidence-backed.
+
+Example:
+
+    Demand is weakening.
+    Confidence = 81%.
+    Main evidence:
+      - airport arrivals down
+      - hotel occupancy down
+      - search interest down
+
+    Recommendation:
+      monitor for another period before changing capacity.
+
+Recommendations should distinguish:
+
+- observation
+- inference
+- prediction
+- recommendation
+
+
+======================================================================
+19. API ARCHITECTURE
+======================================================================
+
+Public API should eventually use:
+
+    /api/v1/
+
+Core endpoints:
+
+    GET /destinations
+    GET /destinations/{id}
+
+    GET /places
+    GET /places/{id}
+
+    GET /places/{id}/pulse
+    GET /places/{id}/pulse/history
+    GET /places/{id}/trend
+    GET /places/{id}/anomalies
+
+    GET /places/{id}/signals
+    GET /places/{id}/events
+
+    GET /places/{id}/intelligence
+    GET /places/{id}/recommendations
+
+Traveler:
+
+    GET /travelers/{id}
+    GET /travelers/{id}/dna
+    GET /travelers/{id}/recommendations
+
+Destination Twin:
+
+    GET /destinations/{id}/twin
+    POST /destinations/{id}/scenarios
+
+Agents:
+
+    POST /agents/traveler/query
+    POST /agents/business/query
+    POST /agents/city/query
+
+
+======================================================================
+20. DOMAIN-DRIVEN BACKEND ARCHITECTURE
+======================================================================
+
+Target structure:
+
+apps/api/
+  src/tourism_pulse_api/
+
+    api/
+    db/
+    domain/
+      traveler/
+      tourism_pulse/
+      destination_twin/
+      knowledge/
+      agents/
+      studio/
+    ingestion/
+    intelligence/
+    routers/
+    schemas/
+    services/
+    settings/
+
+
+Domain logic should not live inside FastAPI routers.
+
+Routers translate HTTP requests into domain/service operations.
+
+
+======================================================================
+21. DATABASE ARCHITECTURE
+======================================================================
+
+Initial:
+
+    PostgreSQL + PostGIS
+
+Core tables/entities:
+
+    organizations
+    users
+    destinations
+    places
+    attractions
+    hotels
+    events
+    signals
+    pulse_snapshots
+    travelers
+    traveler_preferences
+    traveler_trips
+    businesses
+    sources
+    source_observations
+    data_quality_results
+    recommendations
+    forecasts
+    anomalies
+
+Spatial data should use PostGIS.
+
+Temporal data must retain observed/calculated timestamps.
+
+
+======================================================================
+22. EVENT-DRIVEN ARCHITECTURE
+======================================================================
+
+Initially, synchronous processing and scheduled jobs are sufficient.
+
+Later:
+
+                 DATA SOURCE
+                      |
+                      v
+               SignalCreated
+                      |
+                    Kafka
+                      |
+          +-----------+-----------+
+          |           |           |
+        Pulse       Quality      AI
+        Engine      Engine       Agents
+
+Potential events:
+
+- SignalCreated
+- SignalUpdated
+- SignalRejected
+- PulseCalculated
+- AnomalyDetected
+- ForecastUpdated
+- EventCreated
+- TravelerDNAUpdated
+- RecommendationCreated
+
+
+======================================================================
+23. KNOWLEDGE GRAPH IMPLEMENTATION STRATEGY
+======================================================================
+
+Phase 1:
+
+PostgreSQL relationships + PostGIS.
+
+Phase 2:
+
+semantic entity IDs and relationship tables.
+
+Phase 3:
+
+graph technology only if traversal complexity requires it.
+
+Potential future graph representation:
+
+    node
+      - id
+      - type
+      - properties
+      - source
+      - confidence
+      - valid_from
+      - valid_to
+
+    edge
+      - source_id
+      - relation
+      - target_id
+      - confidence
+      - source
+      - valid_from
+      - valid_to
+
+
+======================================================================
+24. AI / ML ARCHITECTURE
+======================================================================
+
+Separate:
+
+1. Deterministic analytics
+2. Statistical models
+3. ML models
+4. LLM reasoning
+5. Agent orchestration
+
+The Pulse engine remains deterministic.
+
+ML can later handle:
+
+- demand forecasting
+- anomaly detection
+- segmentation
+- recommendation ranking
+- visitor flow prediction
+
+LLMs handle:
+
+- explanation
+- synthesis
+- natural-language interaction
+- planning
+- report generation
+- agent reasoning
+
+
+======================================================================
+25. FRONTEND ARCHITECTURE
+======================================================================
+
+Current stack:
+
+    React
+    TypeScript
+    Vite
+
+Target structure:
+
+apps/web/
+  src/
+    api/
+    components/
+    features/
+      traveler/
+      pulse/
+      destination_twin/
+      intelligence/
+      agents/
+      studio/
+    hooks/
+    pages/
+    types/
+    styles/
+
+Shared components should support role-specific Studio experiences.
+
+
+======================================================================
+26. MOBILE
+======================================================================
+
+Future mobile product:
+
+Traveler:
+- destination discovery
+- itinerary
+- alerts
+- AI travel agent
+
+Professional:
+- Pulse
+- alerts
+- intelligence
+- reports
+
+Mobile should consume the same API and domain services.
+
+
+======================================================================
+27. AUTHENTICATION AND AUTHORIZATION
+======================================================================
+
+Future:
+
+- OAuth2 / OIDC
+- JWT
+- role-based access control
+- organization membership
+- API keys
+- service identities
+
+Roles:
+
+- traveler
+- analyst
+- business_user
+- city_user
+- admin
+- api_client
+
+Strict tenant isolation is required for B2B deployments.
+
+
+======================================================================
+28. PRIVACY AND SECURITY
+======================================================================
+
+Requirements:
+
+- encryption in transit
+- encryption at rest
+- secrets outside source code
+- least privilege
+- audit logs
+- tenant isolation
+- consent management
+- deletion
+- data export
+- retention policies
+- secure API authentication
+- rate limiting
+
+Traveler DNA must receive stronger privacy controls than public
+destination data.
+
+
+======================================================================
+29. OBSERVABILITY
+======================================================================
+
+Required:
+
+- structured logs
+- metrics
+- traces
+- correlation IDs
+- ingestion monitoring
+- API monitoring
+- model monitoring
+
+Important metrics:
+
+- API latency
+- error rate
+- ingestion success rate
+- stale signal count
+- source failures
+- Pulse calculation latency
+- agent latency
+- token/cost usage
+- forecast accuracy
+
+
+======================================================================
+30. TESTING STRATEGY
+======================================================================
+
+Unit:
+
+- normalization
+- freshness
+- reliability
+- confidence
+- Pulse
+- trend
+- anomaly
+- interpretation
+- Traveler DNA logic
+- Twin calculations
+
+Adapter:
+
+- KSH
+- weather
+- events
+- transport
+
+Integration:
+
+- database
+- API
+- ingestion
+- Pulse
+- snapshots
+- graph relationships
+
+End-to-end:
+
+    source
+      ->
+    ingestion
+      ->
+    signal
+      ->
+    Pulse
+      ->
+    API
+      ->
+    Studio
+
+AI tests:
+
+- tool selection
+- groundedness
+- citation/evidence
+- refusal of unsupported claims
+- deterministic calculations
+
+
+======================================================================
+31. CI/CD
+======================================================================
+
+Every change should run:
+
+    formatting
+    lint
+    unit tests
+    integration tests
+    migrations
+    frontend build
+    frontend lint
+    security checks
+
+Deployment pipeline:
+
+    Git commit
+       ->
+    CI
+       ->
+    tests
+       ->
+    container build
+       ->
+    staging
+       ->
+    smoke tests
+       ->
+    production
+
+
+======================================================================
+32. ENVIRONMENTS
+======================================================================
+
+Development:
+
+    WSL
+    Python virtual environment
+    PostgreSQL
+    React/Vite
+
+Test:
+
+    isolated database
+    deterministic fixtures
+
+Staging:
+
+    production-like containers
+    real or controlled external sources
+
+Production:
+
+    managed database
+    object storage
+    API containers
+    worker/scheduler
+    observability
+
+
+======================================================================
+33. SCALABILITY
+======================================================================
+
+Initial target:
+
+    hundreds of destinations
+    thousands of signals
+    small user population
+
+Later:
+
+    thousands of destinations
+    millions of observations
+    millions of travelers
+    high API volume
+
+Scaling path:
+
+    PostgreSQL
+      ->
+    read replicas
+      ->
+    object storage
+      ->
+    analytical warehouse/lakehouse
+      ->
+    event streaming
+      ->
+    distributed processing
+
+
+======================================================================
+34. MULTI-TENANCY
+======================================================================
+
+B2B architecture:
+
+Organization
+  |
+  +-- Users
+  |
+  +-- Destinations
+  |
+  +-- Reports
+  |
+  +-- Alerts
+  |
+  +-- API Keys
+
+Every tenant-owned resource must be isolated.
+
+Destination-level access should also be possible.
+
+
+======================================================================
+35. TOURISM CONTENT PLATFORM
+======================================================================
+
+Potential subsystem:
+
+    data
+      ->
+    intelligence
+      ->
+    story
+      ->
+    script
+      ->
+    voice
+      ->
+    avatar/video
+      ->
+    publication
+
+Outputs:
+
+- daily destination briefing
+- tourism news
+- YouTube videos
+- short-form video
+- social posts
+- newsletters
+- reports
+
+Content must reference actual platform evidence.
+
+
+======================================================================
+36. SEARCH AND DISCOVERY
+======================================================================
+
+Future traveler query:
+
+    "Best European destination for four days in October,
+     good weather, low crowds and nightlife."
+
+System evaluates:
+
+- Traveler DNA
+- weather
+- Pulse
+- events
+- crowding
+- prices
+- flights
+- hotels
+- destination fit
+
+Output should be ranked and explainable.
+
+
+======================================================================
+37. DESTINATION COMPARISON
+======================================================================
+
+Example:
+
+    Budapest
+    Vienna
+    Prague
+    Athens
+
+Compare:
+
+- Pulse
+- Demand
+- Capacity
+- Events
+- Environment
+- Momentum
+- Forecast
+- Risk
+- traveler fit
+
+This becomes useful for both travelers and city/business users.
+
+
+======================================================================
+38. COMMERCIAL MODEL
+======================================================================
+
+Potential revenue streams:
+
+B2C:
+    premium travel assistant
+
+B2B SaaS:
+    hotels
+    restaurants
+    tourism companies
+
+Enterprise:
+    DMOs
+    airports
+    tourism authorities
+
+API:
+    usage-based
+
+Data:
+    dataset licensing
+
+White-label:
+    destination-branded deployments
+
+Media:
+    sponsorship / advertising
+
+Consulting:
+    custom tourism intelligence
+
+
+======================================================================
+39. PRODUCT PACKAGING
+======================================================================
+
+Traveler:
+
+    Free
+    Premium
+
+Business:
+
+    Starter
+    Professional
+    Enterprise
+
+City:
+
+    City Intelligence
+    Enterprise Destination Twin
+
+Developer:
+
+    API Free
+    API Pro
+    Enterprise API
+
+Data:
+
+    Dataset subscriptions
+
+
+======================================================================
+40. PRODUCT MOAT
+======================================================================
+
+The defensible asset is not the dashboard.
+
+The long-term moat is:
+
+    historical tourism data
+    +
+    source lineage
+    +
+    destination relationships
+    +
+    seasonal models
+    +
+    traveler behavior
+    +
+    event impact models
+    +
+    forecast models
+    +
+    knowledge graph
+    +
+    AI reasoning
+    +
+    feedback loops
+
+Over time the platform should learn how destinations behave.
+
+
+======================================================================
+41. DEVELOPMENT ROADMAP
+======================================================================
+
+PHASE 0 - ENGINEERING FOUNDATION
+
+Status: largely complete
+
+- repository
+- Git
+- WSL
+- Python environment
+- PostgreSQL
+- PostGIS
+- Alembic
+- FastAPI
+- React/Vite
+- automated tests
+
+
+PHASE 1 - TOURISM PULSE ENGINE
+
+Status: working MVP
+
+Completed foundation:
+
+- signal model
+- normalization
+- freshness
+- reliability
+- effective signals
+- dimensions
+- Pulse
+- confidence
+- interpretation
+- events
+- snapshots
+- history
+- trend
+- anomaly
+- API
+- frontend
+
+
+PHASE 2 - TOURISM PULSE STUDIO
+
+Status: MVP / active
+
+- dashboard
+- destination selection
+- Pulse
+- dimensions
+- confidence
+- history
+- interpretation
+- trend
+- anomaly
+- watch list
+
+
+PHASE 3 - REAL TOURISM DATA
+
+NEXT
+
+Start with:
+
+1. KSH
+2. weather
+3. events
+4. transport
+5. accommodation
+6. search / sentiment
+
+Build:
+
+- source registry
+- adapters
+- ingestion scheduler
+- raw archive
+- data quality
+- lineage
+- source attribution
+
+
+PHASE 4 - DESTINATION TWIN
+
+Build:
+
+- geography
+- tourism assets
+- infrastructure
+- visitor flows
+- capacity
+- economic indicators
+- environmental model
+- simulation engine
+
+
+PHASE 5 - TOURISM KNOWLEDGE GRAPH
+
+Build:
+
+- canonical entities
+- entity resolution
+- relationships
+- temporal validity
+- provenance
+- semantic search
+
+
+PHASE 6 - ADVANCED INTELLIGENCE
+
+Build:
+
+- seasonal models
+- forecasting
+- advanced anomalies
+- risk
+- opportunity
+- recommendations
+
+
+PHASE 7 - AI AGENTS
+
+Build:
+
+- Traveler Agent
+- Business Agent
+- City Agent
+- tool layer
+- agent orchestration
+- evidence grounding
+- memory
+- permissions
+
+
+PHASE 8 - TOURISM STUDIO
+
+Build:
+
+- Traveler Studio
+- Business Studio
+- City Studio
+- Executive Studio
+- Content Studio
+
+
+PHASE 9 - CONSUMER TRAVEL PLATFORM
+
+Build:
+
+- discovery
+- personalization
+- trip planning
+- itinerary
+- recommendations
+- mobile
+
+
+PHASE 10 - COMMERCIAL PLATFORM
+
+Build:
+
+- accounts
+- subscriptions
+- billing
+- enterprise
+- API
+- white-label
+- data products
+
+
+PHASE 11 - GLOBAL SCALE
+
+Build:
+
+- hundreds/thousands of destinations
+- event streaming
+- lakehouse
+- distributed analytics
+- advanced AI agents
+- global destination graph
+
+
+======================================================================
+42. CURRENT REPOSITORY MAPPING
+======================================================================
+
+Current working repository:
+
+    Tourism-Pulse/
+
+Backend:
+
+    apps/api/
+
+Frontend:
+
+    apps/web/
+
+Database/migrations:
+
+    infrastructure/alembic/
+
+Tests:
+
+    tests/
+
+Current technologies:
+
+    Python
+    FastAPI
+    SQLAlchemy
+    PostgreSQL
+    PostGIS
+    Alembic
+    React
+    TypeScript
+    Vite
+
+Existing Pulse subsystem maps to:
+
+    domains/tourism_pulse/
+
+Conceptual future domains:
+
+    domains/traveler/
+    domains/destination_twin/
+    domains/knowledge/
+    domains/agents/
+    domains/studio/
+
+
+======================================================================
+43. TARGET REPOSITORY STRUCTURE
+======================================================================
+
+Tourism-Pulse/
+
+  apps/
+    api/
+    web/
+
+  domains/
+    traveler/
+    tourism_pulse/
+    destination_twin/
+    knowledge/
+    agents/
+    studio/
+
+  data/
+    ingestion/
+    governance/
+    normalization/
+    sources/
+
+  infrastructure/
+    alembic/
+    docker/
+    deployment/
+
+  tests/
+    unit/
+    integration/
+    e2e/
+    fixtures/
+
+  docs/
+    architecture/
+    data/
+    api/
+    agents/
+    decisions/
+
+  pyproject.toml
+
+
+Do not perform a large restructuring merely for appearance. Migrate
+incrementally as domains become active.
+
+
+======================================================================
+44. END-TO-END DATA FLOW
+======================================================================
+
+Example: KSH tourism statistics
+
+KSH
+ |
+ v
+Source Adapter
+ |
+ v
+Raw Observation
+ |
+ v
+Validation
+ |
+ v
+Source Metadata
+ |
+ v
+Normalization
+ |
+ v
+Tourism Signal
+ |
+ v
+Freshness
+ |
+ v
+Reliability
+ |
+ v
+Demand Dimension
+ |
+ v
+Tourism Pulse
+ |
+ v
+Pulse Snapshot
+ |
+ +-------------------+
+ |                   |
+ v                   v
+Trend              Anomaly
+ |                   |
+ +---------+---------+
+           |
+           v
+Destination Twin
+           |
+           v
+Knowledge Graph
+           |
+           v
+AI Agent
+           |
+           v
+Tourism Studio
+
+
+======================================================================
+45. END-TO-END TRAVELER FLOW
+======================================================================
+
+Traveler enters:
+
+    "I want a four-day European trip in October."
+
+System:
+
+1. Load Traveler DNA
+2. Identify preferences
+3. Query destination candidates
+4. Query Destination Twins
+5. Query Tourism Pulse
+6. Query forecast
+7. Query events
+8. Query weather
+9. Calculate traveler-destination fit
+10. Rank destinations
+11. Explain recommendations
+12. Build itinerary
+13. Monitor conditions
+14. Adapt recommendations
+
+
+======================================================================
+46. END-TO-END CITY FLOW
+======================================================================
+
+City official asks:
+
+    "Why is tourism demand weakening?"
+
+System:
+
+1. Load Destination Twin
+2. Load Tourism Pulse
+3. Retrieve historical snapshots
+4. Compare seasonality
+5. Examine signals
+6. Detect anomalies
+7. Examine events
+8. Examine weather
+9. Examine transport
+10. Query Knowledge Graph
+11. City Agent synthesizes evidence
+12. Produce explanation
+13. Estimate risks
+14. Recommend actions
+
+
+======================================================================
+47. END-TO-END BUSINESS FLOW
+======================================================================
+
+Hotel asks:
+
+    "What should I expect next weekend?"
+
+System:
+
+1. Load business context
+2. Load destination Pulse
+3. Load demand forecast
+4. Load events
+5. Load airport/transport
+6. Load weather
+7. Compare historical periods
+8. Analyze traveler segments
+9. Business Agent produces forecast
+10. Generate recommendations
+11. Trigger alerts if thresholds change
+
+
+======================================================================
+48. NON-FUNCTIONAL REQUIREMENTS
+======================================================================
+
+Reliability:
+    APIs should degrade gracefully when sources fail.
+
+Accuracy:
+    Raw data and calculations must be deterministic and reproducible.
+
+Explainability:
+    Major intelligence results must be traceable to evidence.
+
+Freshness:
+    Each signal must expose its observation time and freshness state.
+
+Security:
+    Personal and tenant data must be isolated.
+
+Scalability:
+    Architecture must permit horizontal API and worker scaling.
+
+Maintainability:
+    Domain logic must be independent from UI and HTTP frameworks.
+
+Testability:
+    External sources must be mockable.
+
+Observability:
+    Every ingestion and intelligence pipeline must be measurable.
+
+Cost control:
+    AI calls must be measurable and bounded.
+
+
+======================================================================
+49. ARCHITECTURAL RISKS
+======================================================================
+
+Risk:
+    Overengineering too early.
+
+Mitigation:
+    Start with PostgreSQL and modular Python services.
+
+Risk:
+    AI hallucination.
+
+Mitigation:
+    Evidence-grounded agents and deterministic analytical core.
+
+Risk:
+    Poor data quality.
+
+Mitigation:
+    Validation, provenance, confidence and quarantine.
+
+Risk:
+    Seasonal bias.
+
+Mitigation:
+    seasonal baselines and historical comparison.
+
+Risk:
+    Privacy problems.
+
+Mitigation:
+    consent, minimization and strict access controls.
+
+Risk:
+    Source dependency.
+
+Mitigation:
+    adapter architecture and multiple sources.
+
+Risk:
+    Graph complexity.
+
+Mitigation:
+    relational graph first, dedicated graph later.
+
+Risk:
+    Infrastructure complexity.
+
+Mitigation:
+    scale architecture only when actual usage requires it.
+
+
+======================================================================
+50. IMPLEMENTATION RULES FOR CODEX / DEVELOPMENT AGENTS
+======================================================================
+
+1. Read the architecture specification before implementing major domains.
+
+2. Do not treat Tourism Pulse as the whole application.
+
+3. Preserve explicit domain boundaries.
+
+4. Never hardcode external source data into production logic.
+
+5. Preserve raw observations.
+
+6. Every derived signal must be reproducible.
+
+7. Every external source requires an adapter.
+
+8. External calls must be isolated and mockable.
+
+9. Do not put business logic in FastAPI routers.
+
+10. Do not put domain calculations directly into React components.
+
+11. Maintain API contracts.
+
+12. Add migrations for schema changes.
+
+13. Add tests for every domain behavior.
+
+14. Do not introduce infrastructure technologies without a demonstrated
+    requirement.
+
+15. Do not expose personal data to LLMs unless required, authorized and
+    properly protected.
+
+16. AI agents must use explicit tools and permissions.
+
+17. AI must not replace deterministic calculations.
+
+18. Any recommendation should expose supporting evidence.
+
+19. Maintain backward compatibility for public APIs where practical.
+
+20. Update architecture documentation when major boundaries change.
+
+
+======================================================================
+51. SUCCESS CRITERIA
+======================================================================
+
+The platform is successful when:
+
+A traveler can say:
+
+    "Find me a destination that fits my preferences."
+
+and receive an evidence-backed recommendation.
+
+A business can say:
+
+    "What should I expect next weekend?"
+
+and receive a useful forecast.
+
+A city can say:
+
+    "Why is tourism changing?"
+
+and receive an evidence-backed explanation.
+
+A developer can call:
+
+    /api/v1/destinations/{id}/pulse
+
+and receive a reliable machine-readable intelligence result.
+
+A destination authority can simulate:
+
+    "What happens if demand grows 20%?"
+
+and receive a modeled answer.
+
+The platform should eventually move from:
+
+    DATA DISPLAY
+
+to:
+
+    UNDERSTANDING
+
+to:
+
+    PREDICTION
+
+to:
+
+    DECISION
+
+to:
+
+    ACTION.
+
+
+======================================================================
+52. FINAL ARCHITECTURAL DEFINITION
+======================================================================
+
+The complete Tourism AI Platform is:
+
+                         TOURISM AI PLATFORM
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+     TRAVELER DNA           TOURISM PULSE          DESTINATION TWIN
+          |                       |                       |
+          +-----------------------+-----------------------+
+                                  |
+                       TOURISM KNOWLEDGE GRAPH
+                                  |
+                             AI AGENTS
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+      TRAVELER                BUSINESS                  CITY
+       AGENT                   AGENT                   AGENT
+          |                       |                       |
+          +-----------------------+-----------------------+
+                                  |
+                           TOURISM STUDIO
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+       TRAVELER                BUSINESS                  CITY
+        STUDIO                  STUDIO                  STUDIO
+
+Underneath:
+
+    Tourism Data Platform
+    Data Sources
+    Data Lake
+    Data Governance
+    Data Quality
+    Data Lineage
+    APIs
+    ML Models
+    AI Infrastructure
+    Security
+    Observability
+    CI/CD
+    Cloud Infrastructure
+
+The three fundamental models are:
+
+    Traveler DNA
+        = WHO
+
+    Tourism Pulse
+        = WHAT IS HAPPENING
+
+    Destination Twin
+        = WHAT THE DESTINATION IS AND HOW IT BEHAVES
+
+The Knowledge Graph connects them.
+
+AI Agents reason over them.
+
+Tourism Studio turns that intelligence into usable products.
+
+That is the complete system we are building.

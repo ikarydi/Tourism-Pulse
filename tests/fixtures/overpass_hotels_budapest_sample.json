@@ -1,0 +1,116 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-08-21T15:07:21Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 262861756,
+  "lat": 47.5068414,
+  "lon": 19.0532009,
+  "tags": {
+    "addr:city": "Budapest",
+    "addr:housenumber": "19",
+    "addr:postcode": "1054",
+    "addr:street": "Kálmán Imre utca",
+    "alt_name": "Parlament Hotel",
+    "brand": "Ikonik Hotels",
+    "capacity": "135",
+    "contact:email": "reservations@ikonikparlament.com",
+    "contact:phone": "+34 932087109",
+    "contact:tripadvisor": "597800",
+    "contact:website": "https://www.ikonikparlament.com",
+    "name": "Ikonik Parlament",
+    "old_name": "Hotel Parlament",
+    "operator": "Zipar Hungary Kft.",
+    "stars": "4",
+    "tourism": "hotel",
+    "wikidata": "Q111400907"
+  }
+},
+{
+  "type": "node",
+  "id": 272507328,
+  "lat": 47.4942056,
+  "lon": 19.0553623,
+  "tags": {
+    "addr:city": "Budapest",
+    "addr:housenumber": "1-3",
+    "addr:postcode": "1052",
+    "addr:street": "Pilvax köz",
+    "capacity": "66",
+    "contact:email": "pilvax@cityhotel.hu",
+    "contact:facebook": "100063740942249",
+    "contact:foursquare": "4da8c5541e72c1ab9bcbbf0c",
+    "contact:phone": "+36 20 442 0488",
+    "contact:tripadvisor": "276354",
+    "contact:website": "https://www.cityhotel-pilvax.hu/",
+    "name": "City Hotel Pilvax",
+    "operator": "Belvárosi Szállodák Kft.",
+    "ref:google": "/g/1tdw6tv6",
+    "tourism": "hotel",
+    "wheelchair": "yes",
+    "wikidata": "Q111400966"
+  }
+},
+{
+  "type": "node",
+  "id": 272856451,
+  "lat": 47.4934421,
+  "lon": 19.0556681,
+  "tags": {
+    "addr:city": "Budapest",
+    "addr:housenumber": "2/a",
+    "addr:postcode": "1053",
+    "addr:street": "Kossuth Lajos utca",
+    "name": "Leo Boutique Rooms",
+    "opening_hours": "24/7",
+    "phone": "+36 70 630 1098",
+    "tourism": "hotel",
+    "website": "https://leoboutiquerooms.com",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 415959268,
+  "lat": 47.4901606,
+  "lon": 19.0665973,
+  "tags": {
+    "addr:city": "Budapest",
+    "addr:housenumber": "2-3",
+    "addr:postcode": "1088",
+    "addr:street": "Mikszáth Kálmán tér",
+    "check_date": "2026-06-06",
+    "name": "BoHo",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 417031682,
+  "lat": 47.5014989,
+  "lon": 19.0667521,
+  "tags": {
+    "addr:city": "Budapest",
+    "addr:housenumber": "63",
+    "addr:postcode": "1074",
+    "addr:street": "Dob utca",
+    "contact:email": "welcome@queenscourt.hu",
+    "contact:phone": "+36 1 882 3000",
+    "contact:tripadvisor": "617507",
+    "contact:website": "https://queenscourthotelbudapest.com",
+    "name": "Queen's Court Hotel & Residence",
+    "ref:HU:ntak": "SZ19000558",
+    "stars": "5",
+    "tourism": "hotel",
+    "wikidata": "Q111400973"
+  }
+}
+
+  ]
+}
