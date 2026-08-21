@@ -8,6 +8,8 @@ from datetime import UTC, datetime, time
 
 from sqlalchemy.orm import Session
 
+from tourism_pulse_api.data_quality.pipeline import run_quality_checks
+from tourism_pulse_api.data_quality.types import QualityGateResult, SignalCandidate
 from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.ingestion.ksh.parser import KSH_SOURCE_NAME, KshObservation
 from tourism_pulse_api.pulse.seasonal_normalization import (
@@ -133,15 +135,37 @@ def upsert_tourism_nights_signal(
     place_id: int,
     observation: KshObservation,
     source_url: str,
-) -> tuple[Signal, bool]:
-    """Idempotently write one KSH observation as a `tourism_nights` Signal.
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
+    """Idempotently write one KSH observation as a `tourism_nights` Signal,
+    after passing it through the data-quality gate (spec section 14).
 
-    Returns (signal, created). Re-running this with the same observation and
-    place is a no-op beyond refreshing the stored value/unit/source_url -
-    it never creates a duplicate row for the same
-    (place_id, signal_type, observed_at, source).
+    Returns (signal, created, gate). `signal` is None and `created` is
+    False when the gate rejects the candidate - the already-archived
+    SourceObservation (if any) is left untouched either way (spec 12.1),
+    only the Signal write is skipped.
+
+    Re-running this with the same observation and place is a no-op beyond
+    refreshing the stored value/unit/source_url - it never creates a
+    duplicate row for the same (place_id, signal_type, observed_at, source).
     """
     observed_at = observed_at_for(observation)
+
+    gate = run_quality_checks(
+        db,
+        SignalCandidate(
+            place_id=place_id,
+            signal_type=TOURISM_NIGHTS_SIGNAL_TYPE,
+            value=observation.total_nights,
+            unit=observation.unit,
+            observed_at=observed_at,
+            source=KSH_SOURCE_NAME,
+            source_observation_id=source_observation_id,
+        ),
+    )
+
+    if not gate.accepted:
+        return None, False, gate
 
     existing = (
         db.query(Signal)
@@ -158,9 +182,10 @@ def upsert_tourism_nights_signal(
         existing.value = observation.total_nights
         existing.unit = observation.unit
         existing.source_url = source_url
+        existing.source_observation_id = source_observation_id
         db.commit()
         db.refresh(existing)
-        return existing, False
+        return existing, False, gate
 
     signal = Signal(
         place_id=place_id,
@@ -170,8 +195,9 @@ def upsert_tourism_nights_signal(
         observed_at=observed_at,
         source=KSH_SOURCE_NAME,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )
     db.add(signal)
     db.commit()
     db.refresh(signal)
-    return signal, True
+    return signal, True, gate

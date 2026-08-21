@@ -103,8 +103,59 @@ def pytest_configure(config) -> None:
     # the full app also registers every model on Base.metadata, which
     # create_all below depends on.
     from tourism_pulse_api.db.base import Base
-    from tourism_pulse_api.db.session import engine
+    from tourism_pulse_api.db.session import SessionLocal, engine
     from tourism_pulse_api.main import app  # noqa: F401
 
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+
+    _seed_sources(SessionLocal)
+
+
+def _seed_sources(session_factory) -> None:
+    """Seeds the `sources` table for the test DB.
+
+    Base.metadata.create_all builds schema only, not data - the real
+    add_sources_table migration's seed rows never apply here, since
+    `alembic upgrade` never runs against the test database. Every
+    ingestion adapter's real source name is seeded once, at session
+    start, so adapter tests can reference a real `Source` row (needed to
+    satisfy the source_observations/data_quality_results FK constraints)
+    without each test file racing to insert the same unique `name` and
+    colliding with another file's fixture.
+
+    Deliberately a separate, hand-maintained list rather than an import
+    from the migration (which is intentionally self-contained) or from
+    pulse.reliability.SOURCE_RELIABILITY (which has many entries no
+    adapter test actually needs a row for) - just the source names real
+    adapters write signals under.
+    """
+    from tourism_pulse_api.db.models.source import Source
+
+    seed_rows = [
+        {"name": "ksh", "category": "government", "reliability": "1.000"},
+        {"name": "eurostat", "category": "official", "reliability": "1.000"},
+        {"name": "open-meteo", "category": "official", "reliability": "0.950"},
+        {"name": "osm", "category": "social", "reliability": "0.650"},
+        {"name": "ticketmaster", "category": "commercial", "reliability": "0.900"},
+        {
+            "name": "youtube",
+            "category": "social",
+            "reliability": "0.650",
+            "is_active": False,
+        },
+        {
+            "name": "airbnb",
+            "category": "commercial",
+            "reliability": "0.900",
+            "is_active": False,
+        },
+    ]
+
+    session = session_factory()
+    try:
+        for row in seed_rows:
+            session.add(Source(**row))
+        session.commit()
+    finally:
+        session.close()
