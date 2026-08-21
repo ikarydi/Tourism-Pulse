@@ -119,7 +119,7 @@ def test_build_preview_keeps_raw_and_normalized_values_separate() -> None:
 def test_upsert_creates_signal_with_raw_metadata(db_session, test_place) -> None:
     observation = make_observation(2026, 6, 525300)
 
-    signal, created = upsert_capacity_signal(
+    signal, created, _ = upsert_capacity_signal(
         db_session,
         place_id=test_place.id,
         observation=observation,
@@ -139,13 +139,13 @@ def test_upsert_creates_signal_with_raw_metadata(db_session, test_place) -> None
 def test_upsert_is_idempotent_on_repeated_ingestion(db_session, test_place) -> None:
     observation = make_observation(2026, 6, 525300)
 
-    first, first_created = upsert_capacity_signal(
+    first, first_created, _ = upsert_capacity_signal(
         db_session,
         place_id=test_place.id,
         observation=observation,
         source_url="https://example.com/a.csv",
     )
-    second, second_created = upsert_capacity_signal(
+    second, second_created, _ = upsert_capacity_signal(
         db_session,
         place_id=test_place.id,
         observation=observation,
@@ -173,7 +173,7 @@ def test_upsert_is_idempotent_on_repeated_ingestion(db_session, test_place) -> N
 def test_upsert_refreshes_value_on_a_data_revision(db_session, test_place) -> None:
     observation = make_observation(2026, 6, 300000)
 
-    original, _ = upsert_capacity_signal(
+    original, _, _ = upsert_capacity_signal(
         db_session,
         place_id=test_place.id,
         observation=observation,
@@ -183,7 +183,7 @@ def test_upsert_refreshes_value_on_a_data_revision(db_session, test_place) -> No
 
     revised_observation = make_observation(2026, 6, 310000)
 
-    revised, created_again = upsert_capacity_signal(
+    revised, created_again, _ = upsert_capacity_signal(
         db_session,
         place_id=test_place.id,
         observation=revised_observation,
@@ -193,3 +193,51 @@ def test_upsert_refreshes_value_on_a_data_revision(db_session, test_place) -> No
     assert created_again is False
     assert revised.id == original.id
     assert revised.value == Decimal(310000)
+
+
+def test_upsert_records_source_observation_id(db_session, test_place) -> None:
+    from tourism_pulse_api.db.models import Source
+    from tourism_pulse_api.db.models.source_observation import SourceObservation
+
+    # Seeded once for the whole test session (tests/conftest.py::_seed_sources).
+    source = db_session.query(Source).filter(Source.name == "ksh").one()
+
+    observation_row = SourceObservation(
+        source_id=source.id,
+        dataset="ksh_stadat_27_2_1_13",
+        retrieved_at=datetime.now(UTC),
+        raw_payload="year,month,metric,value\n",
+        content_type="text/csv",
+        checksum="x" * 64,
+    )
+    db_session.add(observation_row)
+    db_session.commit()
+    db_session.refresh(observation_row)
+
+    observation = make_observation(2026, 6, 525300)
+
+    signal, _, gate = upsert_capacity_signal(
+        db_session,
+        place_id=test_place.id,
+        observation=observation,
+        source_url="https://example.com/a.csv",
+        source_observation_id=observation_row.id,
+    )
+
+    assert signal.source_observation_id == observation_row.id
+    assert gate.accepted is True
+
+
+def test_upsert_rejects_impossible_negative_value(db_session, test_place) -> None:
+    observation = make_observation(2026, 6, -1000)
+
+    signal, created, gate = upsert_capacity_signal(
+        db_session,
+        place_id=test_place.id,
+        observation=observation,
+        source_url="https://example.com/a.csv",
+    )
+
+    assert signal is None
+    assert created is False
+    assert gate.accepted is False

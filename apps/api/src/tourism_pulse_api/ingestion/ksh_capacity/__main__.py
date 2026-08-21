@@ -32,6 +32,8 @@ from tourism_pulse_api.ingestion.ksh_capacity.client import fetch_ksh_capacity_c
 from tourism_pulse_api.ingestion.ksh_capacity.parser import (
     DEFAULT_METRIC,
     KSH_CSV_URL,
+    KSH_SOURCE_NAME,
+    KSH_TABLE_ID,
     SUPPORTED_METRICS,
     parse_ksh_capacity_csv,
 )
@@ -40,6 +42,7 @@ from tourism_pulse_api.ingestion.ksh_capacity.service import (
     select_observations,
     upsert_capacity_signal,
 )
+from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -162,15 +165,35 @@ def run(argv: list[str] | None = None) -> int:
             print(f"Place {args.place_id} not found.", file=sys.stderr)
             return 1
 
+        source_observation = archive_raw_observation(
+            db,
+            source_name=KSH_SOURCE_NAME,
+            dataset=f"ksh_stadat_{KSH_TABLE_ID.replace('.', '_')}",
+            raw_payload=text,
+            content_type="text/csv",
+            place_id=args.place_id,
+            source_url=args.url,
+        )
+
         for observation in targets:
             preview = build_preview(observation, observations).as_dict()
 
-            signal, created = upsert_capacity_signal(
+            signal, created, gate = upsert_capacity_signal(
                 db,
                 place_id=args.place_id,
                 observation=observation,
                 source_url=args.url,
+                source_observation_id=source_observation.id,
             )
+
+            if signal is None:
+                reject_reasons = "; ".join(
+                    outcome.detail or outcome.check_name
+                    for outcome in gate.outcomes
+                    if not outcome.passed and outcome.severity == "reject"
+                )
+                print(f"[REJECTED] {preview['period']}: {reject_reasons}", file=sys.stderr)
+                continue
 
             preview["signal_id"] = signal.id
             preview["action"] = "created" if created else "updated"
