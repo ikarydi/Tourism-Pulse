@@ -23,8 +23,12 @@ from datetime import UTC, datetime
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.events.client import build_public_source_url, fetch_events
-from tourism_pulse_api.ingestion.events.parser import parse_ticketmaster_events
+from tourism_pulse_api.ingestion.events.parser import (
+    TICKETMASTER_SOURCE_NAME,
+    parse_ticketmaster_events,
+)
 from tourism_pulse_api.ingestion.events.service import build_preview, upsert_events
+from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
 from tourism_pulse_api.settings import settings
 
 
@@ -156,6 +160,23 @@ def run(argv: list[str] | None = None) -> int:
         if place is None:
             print(f"Place {args.place_id} not found.", file=sys.stderr)
             return 1
+
+        # Archived for the raw record (spec section 12), but not run
+        # through data_quality.pipeline.run_quality_checks or given
+        # lineage on the written rows the way Signal-writing adapters
+        # are: Event has no value/unit/observed_at the way Signal does,
+        # so the SignalCandidate-shaped gate doesn't apply to it as-is.
+        # Extending quality checks/lineage to Event rows is a natural
+        # future step, not built this round.
+        archive_raw_observation(
+            db,
+            source_name=TICKETMASTER_SOURCE_NAME,
+            dataset="ticketmaster_discovery_events",
+            raw_payload=text,
+            content_type="application/json",
+            place_id=args.place_id,
+            source_url=source_url,
+        )
 
         results = upsert_events(
             db,
