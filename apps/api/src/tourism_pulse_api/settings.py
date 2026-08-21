@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     booking_api_key: str | None = None
     airbnb_api_key: str | None = None
 
+    # Optional: only needed for higher OpenSky Network rate limits/time
+    # resolution. Anonymous (unauthenticated) requests still work at a
+    # lower quota - see ingestion.opensky.client. Create an API client at
+    # https://opensky-network.org/ (account settings) for these.
+    opensky_client_id: str | None = None
+    opensky_client_secret: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
