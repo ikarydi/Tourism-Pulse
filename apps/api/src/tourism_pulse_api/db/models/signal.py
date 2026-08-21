@@ -55,3 +55,12 @@ class Signal(Base):
         String(2048),
         nullable=True,
     )
+
+    # Lineage (spec section 15): which raw fetch produced this signal.
+    # Nullable because it stays unset for any Signal created outside the
+    # archive pipeline - notably routers/signals.py's manual POST path,
+    # which has no fetched payload to link to.
+    source_observation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("source_observations.id"),
+        nullable=True,
+    )
