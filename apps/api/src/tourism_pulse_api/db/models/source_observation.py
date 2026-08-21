@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tourism_pulse_api.db.base import Base
@@ -17,6 +17,16 @@ class SourceObservation(Base):
     """
 
     __tablename__ = "source_observations"
+    __table_args__ = (
+        # Covers the "latest observation for source+dataset"
+        # lookup/debugging pattern (spec sections 12/15 lineage inspection).
+        Index(
+            "ix_source_observations_source_dataset_retrieved",
+            "source_id",
+            "dataset",
+            "retrieved_at",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
