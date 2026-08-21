@@ -6,10 +6,12 @@ error responses, and the service layer's overwrite-in-place idempotency.
 """
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from tourism_pulse_api.db.models import Attraction, Destination, Place, Signal
+from tourism_pulse_api.db.models import Attraction, Destination, Place, Signal, Source
+from tourism_pulse_api.db.models.source_observation import SourceObservation
 from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.osm.client import build_overpass_query
 from tourism_pulse_api.ingestion.osm.parser import (
@@ -271,19 +273,26 @@ def test_upsert_attraction_refreshes_stale_fields(db_session, test_place) -> Non
 
 
 def test_upsert_poi_count_signal_creates_row(db_session, test_place) -> None:
-    signal = upsert_poi_count_signal(db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=42)
+    signal, gate = upsert_poi_count_signal(
+        db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=42
+    )
 
     assert signal.signal_type == "hotel_count"
     assert signal.value == 42
     assert signal.source == OSM_SOURCE_NAME
+    assert gate.accepted is True
 
 
 def test_upsert_poi_count_signal_overwrites_rather_than_accumulates(db_session, test_place) -> None:
     # Deliberately different from the seasonal adapters: OSM has no
     # "periods" to keep history of, so repeated runs must not pile up
     # rows (that would dilute the Pulse dimension average).
-    first = upsert_poi_count_signal(db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=10)
-    second = upsert_poi_count_signal(db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=15)
+    first, _ = upsert_poi_count_signal(
+        db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=10
+    )
+    second, _ = upsert_poi_count_signal(
+        db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=15
+    )
 
     assert first.id == second.id
     assert second.value == 15
@@ -296,8 +305,10 @@ def test_upsert_poi_count_signal_overwrites_rather_than_accumulates(db_session, 
 
 
 def test_hotel_and_restaurant_counts_are_independent_signals(db_session, test_place) -> None:
-    hotel_signal = upsert_poi_count_signal(db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=10)
-    restaurant_signal = upsert_poi_count_signal(
+    hotel_signal, _ = upsert_poi_count_signal(
+        db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=10
+    )
+    restaurant_signal, _ = upsert_poi_count_signal(
         db_session, place_id=test_place.id, category=RESTAURANT_CATEGORY, poi_count=50
     )
 
@@ -309,3 +320,39 @@ def test_hotel_and_restaurant_counts_are_independent_signals(db_session, test_pl
 def test_upsert_poi_count_signal_rejects_unknown_category(db_session, test_place) -> None:
     with pytest.raises(ValueError):
         upsert_poi_count_signal(db_session, place_id=test_place.id, category="museum", poi_count=1)
+
+
+def test_upsert_poi_count_signal_records_source_observation_id(db_session, test_place) -> None:
+    source = db_session.query(Source).filter(Source.name == "osm").one()
+
+    observation_row = SourceObservation(
+        source_id=source.id,
+        dataset="overpass_hotel",
+        retrieved_at=datetime.now(UTC),
+        raw_payload="{}",
+        content_type="application/json",
+        checksum="x" * 64,
+    )
+    db_session.add(observation_row)
+    db_session.commit()
+    db_session.refresh(observation_row)
+
+    signal, gate = upsert_poi_count_signal(
+        db_session,
+        place_id=test_place.id,
+        category=HOTEL_CATEGORY,
+        poi_count=10,
+        source_observation_id=observation_row.id,
+    )
+
+    assert signal.source_observation_id == observation_row.id
+    assert gate.accepted is True
+
+
+def test_upsert_poi_count_signal_rejects_negative_count(db_session, test_place) -> None:
+    signal, gate = upsert_poi_count_signal(
+        db_session, place_id=test_place.id, category=HOTEL_CATEGORY, poi_count=-1
+    )
+
+    assert signal is None
+    assert gate.accepted is False

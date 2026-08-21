@@ -31,6 +31,7 @@ from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.osm.client import DEFAULT_RADIUS_METERS, fetch_pois
 from tourism_pulse_api.ingestion.osm.parser import (
     CATEGORY_TAG_QUERIES,
+    OSM_SOURCE_NAME,
     parse_overpass_pois,
     parse_overpass_timestamp,
 )
@@ -39,6 +40,7 @@ from tourism_pulse_api.ingestion.osm.service import (
     upsert_attraction,
     upsert_poi_count_signal,
 )
+from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
 from tourism_pulse_api.pulse.poi_density import (
     HOTEL_REFERENCE_COUNT,
     RESTAURANT_REFERENCE_COUNT,
@@ -128,20 +130,39 @@ def run(argv: list[str] | None = None) -> int:
             _, created = upsert_attraction(db, place_id=args.place_id, poi=poi)
             created_count += 1 if created else 0
 
-        signal = upsert_poi_count_signal(
+        source_observation = archive_raw_observation(
+            db,
+            source_name=OSM_SOURCE_NAME,
+            dataset=f"overpass_{args.category}",
+            raw_payload=text,
+            content_type="application/json",
+            place_id=args.place_id,
+        )
+
+        signal, gate = upsert_poi_count_signal(
             db,
             place_id=args.place_id,
             category=args.category,
             poi_count=len(pois),
             observed_at=observed_at,
+            source_observation_id=source_observation.id,
         )
 
         print(f"[INGESTED] {args.category}")
         print(f"    poi_count: {len(pois)}")
         print(f"    attractions_created: {created_count}")
         print(f"    attractions_updated: {len(pois) - created_count}")
-        print(f"    count_signal_id: {signal.id}")
-        print(f"    normalized_value: {preview.normalized_value}")
+
+        if signal is None:
+            reject_reasons = "; ".join(
+                outcome.detail or outcome.check_name
+                for outcome in gate.outcomes
+                if not outcome.passed and outcome.severity == "reject"
+            )
+            print(f"    count_signal: REJECTED ({reject_reasons})", file=sys.stderr)
+        else:
+            print(f"    count_signal_id: {signal.id}")
+            print(f"    normalized_value: {preview.normalized_value}")
     finally:
         db.close()
 

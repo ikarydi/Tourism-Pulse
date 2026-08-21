@@ -18,9 +18,12 @@ vice versa in principle, though in practice both are written together.
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from tourism_pulse_api.data_quality.pipeline import run_quality_checks
+from tourism_pulse_api.data_quality.types import QualityGateResult, SignalCandidate
 from tourism_pulse_api.db.models.attraction import Attraction
 from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.ingestion.osm.parser import OSM_SOURCE_NAME, OsmPoi
@@ -123,8 +126,14 @@ def upsert_poi_count_signal(
     category: str,
     poi_count: int,
     observed_at: datetime | None = None,
-) -> Signal:
-    """Write (or overwrite) the aggregate POI-count Signal for one category.
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, QualityGateResult]:
+    """Write (or overwrite) the aggregate POI-count Signal for one category,
+    after passing it through the data-quality gate (spec section 14).
+
+    Returns (signal, gate). `signal` is None when the gate rejects the
+    candidate - the already-archived SourceObservation (if any) is left
+    untouched either way (spec 12.1), only the Signal write is skipped.
 
     Unlike the government-statistics adapters, this is *not* upserted on a
     (place, signal_type, observed_at) key the way a monthly series is -
@@ -144,6 +153,22 @@ def upsert_poi_count_signal(
     signal_type = _COUNT_SIGNAL_TYPES[category]
     resolved_observed_at = observed_at or datetime.now(UTC)
 
+    gate = run_quality_checks(
+        db,
+        SignalCandidate(
+            place_id=place_id,
+            signal_type=signal_type,
+            value=Decimal(poi_count),
+            unit="count",
+            observed_at=resolved_observed_at,
+            source=OSM_SOURCE_NAME,
+            source_observation_id=source_observation_id,
+        ),
+    )
+
+    if not gate.accepted:
+        return None, gate
+
     existing = (
         db.query(Signal)
         .filter(
@@ -157,9 +182,10 @@ def upsert_poi_count_signal(
     if existing is not None:
         existing.value = poi_count
         existing.observed_at = resolved_observed_at
+        existing.source_observation_id = source_observation_id
         db.commit()
         db.refresh(existing)
-        return existing
+        return existing, gate
 
     signal = Signal(
         place_id=place_id,
@@ -168,8 +194,9 @@ def upsert_poi_count_signal(
         unit="count",
         observed_at=resolved_observed_at,
         source=OSM_SOURCE_NAME,
+        source_observation_id=source_observation_id,
     )
     db.add(signal)
     db.commit()
     db.refresh(signal)
-    return signal
+    return signal, gate
