@@ -42,6 +42,8 @@ from datetime import UTC, datetime, time
 
 from sqlalchemy.orm import Session
 
+from tourism_pulse_api.data_quality.pipeline import run_quality_checks
+from tourism_pulse_api.data_quality.types import QualityGateResult, SignalCandidate
 from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.ingestion.eurostat.parser import EUROSTAT_SOURCE_NAME, EurostatObservation
 from tourism_pulse_api.pulse.seasonal_normalization import (
@@ -131,8 +133,34 @@ def _upsert_signal(
     signal_type: str,
     observation: EurostatObservation,
     source_url: str,
-) -> tuple[Signal, bool]:
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
+    """Shared by all four public upsert_*_signal functions below - each is a
+    thin wrapper picking `signal_type`, so the data-quality gate and
+    lineage wiring only needs to happen here, once, for all of them.
+
+    Returns (signal, created, gate). `signal` is None and `created` is
+    False when the gate rejects the candidate - the already-archived
+    SourceObservation (if any) is left untouched either way (spec 12.1),
+    only the Signal write is skipped.
+    """
     observed_at = observed_at_for(observation)
+
+    gate = run_quality_checks(
+        db,
+        SignalCandidate(
+            place_id=place_id,
+            signal_type=signal_type,
+            value=observation.value,
+            unit=observation.unit,
+            observed_at=observed_at,
+            source=EUROSTAT_SOURCE_NAME,
+            source_observation_id=source_observation_id,
+        ),
+    )
+
+    if not gate.accepted:
+        return None, False, gate
 
     existing = (
         db.query(Signal)
@@ -149,9 +177,10 @@ def _upsert_signal(
         existing.value = observation.value
         existing.unit = observation.unit
         existing.source_url = source_url
+        existing.source_observation_id = source_observation_id
         db.commit()
         db.refresh(existing)
-        return existing, False
+        return existing, False, gate
 
     signal = Signal(
         place_id=place_id,
@@ -161,11 +190,12 @@ def _upsert_signal(
         observed_at=observed_at,
         source=EUROSTAT_SOURCE_NAME,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )
     db.add(signal)
     db.commit()
     db.refresh(signal)
-    return signal, True
+    return signal, True, gate
 
 
 # --- tourism_nights: seasonal normalization ---------------------------------
@@ -223,12 +253,13 @@ def upsert_tourism_nights_signal(
     place_id: int,
     observation: EurostatObservation,
     source_url: str,
-) -> tuple[Signal, bool]:
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
     """Idempotently write one Eurostat observation as a `tourism_nights` Signal.
 
-    Returns (signal, created). Re-running this with the same observation and
-    place is a no-op beyond refreshing the stored value/unit/source_url - it
-    never creates a duplicate row for the same
+    Returns (signal, created, gate). Re-running this with the same
+    observation and place is a no-op beyond refreshing the stored
+    value/unit/source_url - it never creates a duplicate row for the same
     (place_id, signal_type, observed_at, source).
     """
     return _upsert_signal(
@@ -237,6 +268,7 @@ def upsert_tourism_nights_signal(
         signal_type=TOURISM_NIGHTS_SIGNAL_TYPE,
         observation=observation,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )
 
 
@@ -274,7 +306,8 @@ def upsert_capacity_signal(
     place_id: int,
     observation: EurostatObservation,
     source_url: str,
-) -> tuple[Signal, bool]:
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
     """Idempotently write one Eurostat observation as an `accommodation_capacity` Signal.
 
     Same signal_type `ingestion.ksh_capacity` writes for Hungary, so this
@@ -289,6 +322,7 @@ def upsert_capacity_signal(
         signal_type=ACCOMMODATION_CAPACITY_SIGNAL_TYPE,
         observation=observation,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )
 
 
@@ -335,7 +369,8 @@ def upsert_arrivals_signal(
     place_id: int,
     observation: EurostatObservation,
     source_url: str,
-) -> tuple[Signal, bool]:
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
     """Idempotently write one Eurostat observation as a `tourist_arrivals` Signal.
 
     Raw/archival only - see the module docstring for why no dimension
@@ -347,6 +382,7 @@ def upsert_arrivals_signal(
         signal_type=ARRIVALS_SIGNAL_TYPE,
         observation=observation,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )
 
 
@@ -398,7 +434,8 @@ def upsert_occupancy_rate_signal(
     place_id: int,
     observation: EurostatObservation,
     source_url: str,
-) -> tuple[Signal, bool]:
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
     """Idempotently write one Eurostat observation as an `occupancy_rate` Signal.
 
     Flows through the generic normalize_percentage pathway at Pulse
@@ -411,4 +448,5 @@ def upsert_occupancy_rate_signal(
         signal_type=OCCUPANCY_RATE_SIGNAL_TYPE,
         observation=observation,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )

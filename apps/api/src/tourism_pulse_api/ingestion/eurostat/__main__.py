@@ -56,6 +56,7 @@ from tourism_pulse_api.ingestion.eurostat.client import (
     fetch_tourism_nights,
 )
 from tourism_pulse_api.ingestion.eurostat.parser import (
+    EUROSTAT_SOURCE_NAME,
     EurostatObservation,
     parse_eurostat_arrivals,
     parse_eurostat_capacity,
@@ -73,6 +74,7 @@ from tourism_pulse_api.ingestion.eurostat.service import (
     upsert_occupancy_rate_signal,
     upsert_tourism_nights_signal,
 )
+from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
 
 
 @dataclass(frozen=True)
@@ -84,8 +86,11 @@ class MetricSpec:
     # a "direct" metric's preview only needs the one observation.
     build_preview: Callable[..., object]
     needs_full_series_for_preview: bool
-    upsert: Callable[..., tuple[object, bool]]
+    upsert: Callable[..., tuple[object | None, bool, object]]
     not_found_label: str
+    # Eurostat dataset code - disambiguates raw archive rows, since all
+    # four metrics share the single "eurostat" Source row.
+    dataset: str
 
 
 METRICS: dict[str, MetricSpec] = {
@@ -97,6 +102,7 @@ METRICS: dict[str, MetricSpec] = {
         needs_full_series_for_preview=True,
         upsert=upsert_tourism_nights_signal,
         not_found_label="nights-spent",
+        dataset="eurostat_tour_occ_nim",
     ),
     "arrivals": MetricSpec(
         fetch=fetch_arrivals,
@@ -106,6 +112,7 @@ METRICS: dict[str, MetricSpec] = {
         needs_full_series_for_preview=False,
         upsert=upsert_arrivals_signal,
         not_found_label="arrivals",
+        dataset="eurostat_tour_occ_arm",
     ),
     "occupancy_rate": MetricSpec(
         fetch=fetch_occupancy_rate,
@@ -115,6 +122,7 @@ METRICS: dict[str, MetricSpec] = {
         needs_full_series_for_preview=False,
         upsert=upsert_occupancy_rate_signal,
         not_found_label="occupancy-rate",
+        dataset="eurostat_tour_occ_mnor",
     ),
     "capacity": MetricSpec(
         fetch=fetch_capacity,
@@ -124,6 +132,7 @@ METRICS: dict[str, MetricSpec] = {
         needs_full_series_for_preview=True,
         upsert=upsert_capacity_signal,
         not_found_label="capacity",
+        dataset="eurostat_tour_cap_nat",
     ),
 }
 
@@ -255,15 +264,35 @@ def run(argv: list[str] | None = None) -> int:
             print(f"Place {args.place_id} not found.", file=sys.stderr)
             return 1
 
+        source_observation = archive_raw_observation(
+            db,
+            source_name=EUROSTAT_SOURCE_NAME,
+            dataset=spec.dataset,
+            raw_payload=text,
+            content_type="application/json",
+            place_id=args.place_id,
+            source_url=source_url,
+        )
+
         for observation in targets:
             preview = _preview_dict(spec, observation, observations)
 
-            signal, created = spec.upsert(
+            signal, created, gate = spec.upsert(
                 db,
                 place_id=args.place_id,
                 observation=observation,
                 source_url=source_url,
+                source_observation_id=source_observation.id,
             )
+
+            if signal is None:
+                reject_reasons = "; ".join(
+                    outcome.detail or outcome.check_name
+                    for outcome in gate.outcomes
+                    if not outcome.passed and outcome.severity == "reject"
+                )
+                print(f"[REJECTED] {preview['period']}: {reject_reasons}", file=sys.stderr)
+                continue
 
             preview["signal_id"] = signal.id
             preview["action"] = "created" if created else "updated"

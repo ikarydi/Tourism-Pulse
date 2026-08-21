@@ -203,7 +203,7 @@ def test_capacity_preview_scores_against_prior_years() -> None:
 def test_capacity_upsert_creates_signal(db_session, test_place) -> None:
     observation = make_annual_observation(2025, 1_167_138)
 
-    signal, created = upsert_capacity_signal(
+    signal, created, _ = upsert_capacity_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://a"
     )
 
@@ -217,10 +217,10 @@ def test_capacity_upsert_creates_signal(db_session, test_place) -> None:
 def test_capacity_upsert_is_idempotent(db_session, test_place) -> None:
     observation = make_annual_observation(2025, 1_167_138)
 
-    first, first_created = upsert_capacity_signal(
+    first, first_created, _ = upsert_capacity_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://a"
     )
-    second, second_created = upsert_capacity_signal(
+    second, second_created, _ = upsert_capacity_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://b"
     )
 
@@ -242,7 +242,7 @@ def test_capacity_and_nights_coexist_for_the_same_place(db_session, test_place) 
     db_session.commit()
 
     capacity_observation = make_annual_observation(2025, 1_167_138)
-    capacity_signal, created = upsert_capacity_signal(
+    capacity_signal, created, _ = upsert_capacity_signal(
         db_session, place_id=test_place.id, observation=capacity_observation, source_url="https://a"
     )
 

@@ -175,7 +175,7 @@ def test_arrivals_preview_reports_no_dimension() -> None:
 def test_arrivals_upsert_creates_signal(db_session, test_place) -> None:
     observation = make_observation(2026, 5, 3_378_684, unit=ARRIVALS_UNIT)
 
-    signal, created = upsert_arrivals_signal(
+    signal, created, _ = upsert_arrivals_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://a"
     )
 
@@ -189,10 +189,10 @@ def test_arrivals_upsert_creates_signal(db_session, test_place) -> None:
 def test_arrivals_upsert_is_idempotent(db_session, test_place) -> None:
     observation = make_observation(2026, 5, 3_378_684, unit=ARRIVALS_UNIT)
 
-    first, first_created = upsert_arrivals_signal(
+    first, first_created, _ = upsert_arrivals_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://a"
     )
-    second, second_created = upsert_arrivals_signal(
+    second, second_created, _ = upsert_arrivals_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://b"
     )
 
@@ -217,7 +217,7 @@ def test_arrivals_and_nights_coexist_for_the_same_place_and_period(db_session, t
     db_session.commit()
 
     arrivals_observation = make_observation(2026, 5, 3_378_684, unit=ARRIVALS_UNIT)
-    arrivals_signal, created = upsert_arrivals_signal(
+    arrivals_signal, created, _ = upsert_arrivals_signal(
         db_session, place_id=test_place.id, observation=arrivals_observation, source_url="https://a"
     )
 
@@ -249,7 +249,7 @@ def test_occupancy_preview_clamps_out_of_range_values() -> None:
 def test_occupancy_upsert_creates_signal(db_session, test_place) -> None:
     observation = make_observation(2026, 5, 34.3, unit=OCCUPANCY_UNIT)
 
-    signal, created = upsert_occupancy_rate_signal(
+    signal, created, _ = upsert_occupancy_rate_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://a"
     )
 
@@ -262,10 +262,10 @@ def test_occupancy_upsert_creates_signal(db_session, test_place) -> None:
 def test_occupancy_upsert_is_idempotent(db_session, test_place) -> None:
     observation = make_observation(2026, 5, 34.3, unit=OCCUPANCY_UNIT)
 
-    first, first_created = upsert_occupancy_rate_signal(
+    first, first_created, _ = upsert_occupancy_rate_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://a"
     )
-    second, second_created = upsert_occupancy_rate_signal(
+    second, second_created, _ = upsert_occupancy_rate_signal(
         db_session, place_id=test_place.id, observation=observation, source_url="https://b"
     )
 
