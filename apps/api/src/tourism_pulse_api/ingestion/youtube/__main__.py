@@ -1,7 +1,8 @@
 """Reproducible YouTube search-interest ingestion command.
 
     python -m tourism_pulse_api.ingestion.youtube --place-id 61 --query "Budapest travel guide"
-    python -m tourism_pulse_api.ingestion.youtube --place-id 61 --query "Budapest travel guide" --dry-run
+    python -m tourism_pulse_api.ingestion.youtube --place-id 61 \
+        --query "Budapest travel guide" --dry-run
 
 Requires an API key: set YOUTUBE_API_KEY in .env (enable the YouTube Data
 API v3 at https://console.cloud.google.com/), or pass --api-key explicitly.

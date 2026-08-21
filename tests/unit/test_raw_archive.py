@@ -42,7 +42,11 @@ def test_place(db_session) -> Place:
     db_session.commit()
     db_session.refresh(destination)
 
-    place = Place(destination_id=destination.id, name="Raw Archive Test Place", place_type="destination")
+    place = Place(
+        destination_id=destination.id,
+        name="Raw Archive Test Place",
+        place_type="destination",
+    )
     db_session.add(place)
     db_session.commit()
     db_session.refresh(place)
