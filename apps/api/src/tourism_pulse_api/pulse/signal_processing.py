@@ -35,6 +35,11 @@ DEFAULT_HALF_LIFE_HOURS: dict[str, float] = {
     # cadence; a count doesn't become meaningfully wrong faster than that.
     "hotel_count": 2160.0,
     "restaurant_count": 2160.0,
+    # YouTube search-result counts move faster than a quarterly POI
+    # re-scrape but slower than same-day sentiment - a few-times-a-week
+    # re-ingestion cadence is assumed here; revisit once real re-run
+    # frequency is established.
+    "search_interest": 72.0,
 }
 
 

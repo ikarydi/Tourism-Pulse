@@ -8,6 +8,7 @@ from tourism_pulse_api.pulse.poi_density import (
     normalize_hotel_count,
     normalize_restaurant_count,
 )
+from tourism_pulse_api.pulse.search_interest import normalize_search_interest
 
 Normalizer = Callable[[float], float]
 
@@ -23,6 +24,8 @@ SIGNAL_NORMALIZERS: dict[str, Normalizer] = {
     # OSM POI counts - see pulse.poi_density for the saturating-log formula.
     "hotel_count": normalize_hotel_count,
     "restaurant_count": normalize_restaurant_count,
+    # YouTube search-result counts - see pulse.search_interest.
+    "search_interest": normalize_search_interest,
 }
 
 

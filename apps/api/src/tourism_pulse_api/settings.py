@@ -9,6 +9,18 @@ class Settings(BaseSettings):
     # Kept out of source control - set via .env or the environment.
     ticketmaster_api_key: str | None = None
 
+    # Optional: required only for the YouTube search-interest ingestion
+    # command. Free tier available at https://console.cloud.google.com/
+    # (enable the YouTube Data API v3).
+    youtube_api_key: str | None = None
+
+    # Booking.com/Airbnb have no accessible public API - these settings
+    # exist so wiring real partner credentials later is a client.py diff,
+    # not a new settings field. Unused today (ingestion.booking/airbnb are
+    # scaffolds that always raise SourceNotConfiguredError).
+    booking_api_key: str | None = None
+    airbnb_api_key: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

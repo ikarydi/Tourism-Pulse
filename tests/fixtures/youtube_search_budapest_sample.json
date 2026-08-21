@@ -1,0 +1,30 @@
+{
+  "kind": "youtube#searchListResponse",
+  "pageInfo": {
+    "totalResults": 18400,
+    "resultsPerPage": 5
+  },
+  "items": [
+    {
+      "id": {"kind": "youtube#video", "videoId": "abc123"},
+      "snippet": {
+        "title": "Budapest Travel Guide 2026 - Top 10 Things to Do",
+        "channelTitle": "Wanderlust Channel"
+      }
+    },
+    {
+      "id": {"kind": "youtube#video", "videoId": "def456"},
+      "snippet": {
+        "title": "48 Hours in Budapest - Complete Itinerary",
+        "channelTitle": "City Break TV"
+      }
+    },
+    {
+      "id": {"kind": "youtube#video", "videoId": "ghi789"},
+      "snippet": {
+        "title": "Budapest Thermal Baths You Must Visit",
+        "channelTitle": "Spa & Wellness"
+      }
+    }
+  ]
+}

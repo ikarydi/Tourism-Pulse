@@ -17,6 +17,10 @@ DIMENSION_MAP: dict[str, str] = {
     "occupancy_rate": "demand",
     "hotel_count": "capacity",
     "restaurant_count": "capacity",
+    # YouTube search-result counts - grouped with demand alongside
+    # sentiment/occupancy/tourism_nights as another piece of demand-side
+    # evidence (spec section 6.3 lists search_interest explicitly).
+    "search_interest": "demand",
 }
 
 

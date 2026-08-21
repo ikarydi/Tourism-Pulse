@@ -138,12 +138,7 @@ def _seed_sources(session_factory) -> None:
         {"name": "open-meteo", "category": "official", "reliability": "0.950"},
         {"name": "osm", "category": "social", "reliability": "0.650"},
         {"name": "ticketmaster", "category": "commercial", "reliability": "0.900"},
-        {
-            "name": "youtube",
-            "category": "social",
-            "reliability": "0.650",
-            "is_active": False,
-        },
+        {"name": "youtube", "category": "social", "reliability": "0.650"},
         {
             "name": "airbnb",
             "category": "commercial",
