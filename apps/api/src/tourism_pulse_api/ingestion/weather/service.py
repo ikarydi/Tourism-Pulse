@@ -13,10 +13,13 @@ derived score, per the "preserve raw data" principle.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from tourism_pulse_api.data_quality.pipeline import run_quality_checks
+from tourism_pulse_api.data_quality.types import QualityGateResult, SignalCandidate
 from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.ingestion.weather.parser import (
     OPEN_METEO_SOURCE_NAME,
@@ -96,9 +99,26 @@ def _upsert_signal(
     signal_type: str,
     value: Decimal,
     unit: str,
-    observed_at,
+    observed_at: datetime,
     source_url: str,
-) -> tuple[Signal, bool]:
+    source_observation_id: int | None = None,
+) -> tuple[Signal | None, bool, QualityGateResult]:
+    gate = run_quality_checks(
+        db,
+        SignalCandidate(
+            place_id=place_id,
+            signal_type=signal_type,
+            value=value,
+            unit=unit,
+            observed_at=observed_at,
+            source=OPEN_METEO_SOURCE_NAME,
+            source_observation_id=source_observation_id,
+        ),
+    )
+
+    if not gate.accepted:
+        return None, False, gate
+
     existing = (
         db.query(Signal)
         .filter(
@@ -114,9 +134,10 @@ def _upsert_signal(
         existing.value = value
         existing.unit = unit
         existing.source_url = source_url
+        existing.source_observation_id = source_observation_id
         db.commit()
         db.refresh(existing)
-        return existing, False
+        return existing, False, gate
 
     signal = Signal(
         place_id=place_id,
@@ -126,11 +147,12 @@ def _upsert_signal(
         observed_at=observed_at,
         source=OPEN_METEO_SOURCE_NAME,
         source_url=source_url,
+        source_observation_id=source_observation_id,
     )
     db.add(signal)
     db.commit()
     db.refresh(signal)
-    return signal, True
+    return signal, True, gate
 
 
 def upsert_weather_signals(
@@ -139,13 +161,17 @@ def upsert_weather_signals(
     place_id: int,
     observation: WeatherObservation,
     source_url: str,
-) -> list[tuple[Signal, bool]]:
-    """Idempotently write one weather observation as raw + comfort Signal rows.
+    source_observation_id: int | None = None,
+) -> list[tuple[Signal | None, bool, QualityGateResult]]:
+    """Idempotently write one weather observation as raw + comfort Signal rows,
+    after passing each through the data-quality gate (spec section 14).
 
-    Returns a list of (signal, created) pairs, one per signal_type written.
-    Re-running this with the same observation and place is a no-op beyond
-    refreshing the stored values - it never creates a duplicate row for the
-    same (place_id, signal_type, observed_at, source).
+    Returns a list of (signal, created, gate) triples, one per signal_type
+    written - `signal` is None for any candidate the gate rejects, without
+    aborting the rest of the batch. Re-running this with the same
+    observation and place is a no-op beyond refreshing the stored values -
+    it never creates a duplicate row for the same
+    (place_id, signal_type, observed_at, source).
     """
     results = [
         _upsert_signal(
@@ -156,6 +182,7 @@ def upsert_weather_signals(
             unit=unit,
             observed_at=observation.observed_at,
             source_url=source_url,
+            source_observation_id=source_observation_id,
         )
         for signal_type, unit, getter in _RAW_SIGNAL_SPECS
     ]
@@ -175,6 +202,7 @@ def upsert_weather_signals(
             unit="percent",
             observed_at=observation.observed_at,
             source_url=source_url,
+            source_observation_id=source_observation_id,
         )
     )
 

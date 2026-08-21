@@ -21,9 +21,11 @@ import sys
 
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.db.session import SessionLocal
+from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
 from tourism_pulse_api.ingestion.weather.client import fetch_current_weather
 from tourism_pulse_api.ingestion.weather.parser import (
     OPEN_METEO_BASE_URL,
+    OPEN_METEO_SOURCE_NAME,
     build_request_url,
     parse_open_meteo_current,
 )
@@ -110,11 +112,22 @@ def run(argv: list[str] | None = None) -> int:
             print(f"Place {args.place_id} not found.", file=sys.stderr)
             return 1
 
+        source_observation = archive_raw_observation(
+            db,
+            source_name=OPEN_METEO_SOURCE_NAME,
+            dataset="open-meteo_current",
+            raw_payload=text,
+            content_type="application/json",
+            place_id=args.place_id,
+            source_url=source_url,
+        )
+
         results = upsert_weather_signals(
             db,
             place_id=args.place_id,
             observation=observation,
             source_url=source_url,
+            source_observation_id=source_observation.id,
         )
 
         print(f"[INGESTED] {preview['observed_at']}")
@@ -122,7 +135,15 @@ def run(argv: list[str] | None = None) -> int:
             if key == "observed_at":
                 continue
             print(f"    {key}: {value}")
-        for signal, created in results:
+        for signal, created, gate in results:
+            if signal is None:
+                reject_reasons = "; ".join(
+                    outcome.detail or outcome.check_name
+                    for outcome in gate.outcomes
+                    if not outcome.passed and outcome.severity == "reject"
+                )
+                print(f"    signal: REJECTED ({reject_reasons})", file=sys.stderr)
+                continue
             action = "created" if created else "updated"
             print(f"    signal[{signal.signal_type}]: id={signal.id} ({action})")
     finally:
