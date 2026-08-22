@@ -562,9 +562,13 @@ def test_pulse_narrative_is_reused_within_the_refresh_window() -> None:
 
 
 def test_pulse_narrative_is_none_without_a_configured_provider() -> None:
-    # No settings.groq_api_key configured in the test environment - this
-    # confirms the real (unmocked) generate_narrative degrades to None
-    # rather than raising, end to end through the actual pulse endpoint.
+    # Explicitly cleared rather than relying on the ambient environment
+    # not having GROQ_API_KEY set - a developer's real .env (this
+    # project's own dev setup, once a free key was added) would otherwise
+    # make this "unit" test place a real, non-deterministic network call.
+    # This confirms the real (unmocked otherwise) generate_narrative
+    # degrades to None rather than raising, end to end through the
+    # actual pulse endpoint.
     destination_response = client.post(
         "/destinations",
         json={
@@ -594,7 +598,8 @@ def test_pulse_narrative_is_none_without_a_configured_provider() -> None:
         },
     )
 
-    response = client.get(f"/places/{place_id}/pulse")
+    with patch("tourism_pulse_api.pulse.narrative.settings.groq_api_key", None):
+        response = client.get(f"/places/{place_id}/pulse")
 
     assert response.status_code == 200
     assert response.json()["narrative"] is None

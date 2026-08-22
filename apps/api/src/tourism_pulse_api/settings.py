@@ -39,7 +39,14 @@ class Settings(BaseSettings):
     # deliberately. Narrative is simply omitted (not an error) when unset,
     # same pattern as every other optional external dependency above.
     groq_api_key: str | None = None
-    narrative_model: str = "llama-3.3-70b-versatile"
+    # Groq's model lineup turns over - llama-3.3-70b-versatile (the
+    # original choice here) has since been retired from their catalog.
+    # gpt-oss-120b (OpenAI's open-weight model, Groq-hosted) is the
+    # current pick: strong general-purpose text quality for short
+    # analyst-style synthesis, large context window, still free-tier
+    # eligible. Re-check https://console.groq.com/docs/models if this
+    # 404s again with "model_not_found".
+    narrative_model: str = "openai/gpt-oss-120b"
     # How long a stored narrative stays valid before routers/pulse.py
     # regenerates it on the next persist=true call - bounds LLM spend to
     # roughly one call per place per window, not one per page view.

@@ -103,6 +103,17 @@ def generate_narrative(
             ],
             max_tokens=_MAX_OUTPUT_TOKENS,
             temperature=_TEMPERATURE,
+            # The default narrative_model (openai/gpt-oss-120b) is a
+            # reasoning model: its internal "thinking" tokens count
+            # against max_tokens same as the visible answer, and at
+            # "medium"/default effort routinely ate the whole budget
+            # before writing a word of narrative (finish_reason="length",
+            # content cut off mid-sentence). "low" leaves the budget to
+            # the actual paragraph. Harmless no-op on non-reasoning
+            # models; if narrative_model is ever swapped to one that
+            # rejects this kwarg outright, the broad except below still
+            # degrades to None rather than breaking the pulse response.
+            reasoning_effort="low",
         )
     except GroqError:
         logger.exception("narrative generation failed for %r", place_name)
