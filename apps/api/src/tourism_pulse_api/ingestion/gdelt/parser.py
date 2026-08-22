@@ -30,6 +30,21 @@ _SAMPLE_TITLE_COUNT = 5
 
 
 @dataclass(frozen=True)
+class GdeltArticle:
+    """One article from an ArtList response - the full per-article
+    metadata GDELT returns, not just a title. Persisted as a NewsArticle
+    row (see ingestion.gdelt.service) so it's individually queryable,
+    unlike the aggregate news_mentions Signal.
+    """
+
+    url: str
+    title: str
+    domain: str
+    seendate: datetime | None
+    language: str | None
+
+
+@dataclass(frozen=True)
 class GdeltArticleListObservation:
     """One ArtList response for one query, straight from GDELT."""
 
@@ -37,6 +52,7 @@ class GdeltArticleListObservation:
     article_count: int
     retrieved_at: datetime
     sample_article_titles: list[str]
+    articles: list[GdeltArticle]
 
 
 @dataclass(frozen=True)
@@ -67,19 +83,44 @@ def parse_gdelt_artlist(text: str, *, query: str) -> GdeltArticleListObservation
 
     # A missing "articles" key is a legitimate zero-result query, not an
     # error - GDELT omits the key entirely rather than returning [].
-    articles = payload.get("articles", [])
+    raw_articles = payload.get("articles", [])
 
     try:
-        sample_titles = [article["title"] for article in articles[:_SAMPLE_TITLE_COUNT]]
+        sample_titles = [article["title"] for article in raw_articles[:_SAMPLE_TITLE_COUNT]]
+        articles = [
+            GdeltArticle(
+                url=article["url"],
+                title=article["title"],
+                domain=article.get("domain", ""),
+                seendate=_parse_seendate(article.get("seendate")),
+                language=article.get("language"),
+            )
+            for article in raw_articles
+        ]
     except (KeyError, TypeError) as exc:
         raise ValueError(f"Unexpected GDELT article shape: {exc}") from exc
 
     return GdeltArticleListObservation(
         query=query,
-        article_count=len(articles),
+        article_count=len(raw_articles),
         retrieved_at=datetime.now(UTC),
         sample_article_titles=sample_titles,
+        articles=articles,
     )
+
+
+def _parse_seendate(raw: str | None) -> datetime | None:
+    """GDELT's ArtList `seendate` format is "YYYYMMDDTHHMMSSZ". A
+    missing or malformed date on one article shouldn't reject the whole
+    (potentially 250-article) response - stored as None instead.
+    """
+    if raw is None:
+        return None
+
+    try:
+        return datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return None
 
 
 def parse_gdelt_timelinetone(text: str, *, query: str) -> GdeltToneObservation:

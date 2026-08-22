@@ -36,8 +36,11 @@ from tourism_pulse_api.ingestion.gdelt.parser import (
     parse_gdelt_timelinetone,
 )
 from tourism_pulse_api.ingestion.gdelt.service import (
+    build_category_mentions_preview,
     build_mentions_preview,
     build_tone_preview,
+    persist_articles,
+    upsert_category_mentions_signals,
     upsert_news_mentions_signal,
     upsert_news_sentiment_signal,
 )
@@ -190,6 +193,42 @@ def run(argv: list[str] | None = None) -> int:
                 continue
             print(f"    {key}: {value}")
         print(f"    signal_id: {signal.id}")
+
+        if args.mode == "mentions":
+            articles = persist_articles(
+                db,
+                place_id=args.place_id,
+                observation=observation,
+                source_observation_id=source_observation.id,
+            )
+            print(f"    articles_persisted: {len(articles)}")
+
+            category_results = upsert_category_mentions_signals(
+                db,
+                place_id=args.place_id,
+                articles=articles,
+                source_url=source_url,
+                source_observation_id=source_observation.id,
+                observed_at=observation.retrieved_at,
+            )
+            for category, (category_signal, category_gate) in category_results.items():
+                if category_signal is None:
+                    reject_reasons = "; ".join(
+                        outcome.detail or outcome.check_name
+                        for outcome in category_gate.outcomes
+                        if not outcome.passed and outcome.severity == "reject"
+                    )
+                    print(f"    [REJECTED] {category.value}: {reject_reasons}", file=sys.stderr)
+                    continue
+
+                category_preview = build_category_mentions_preview(
+                    category, int(category_signal.value)
+                )
+                print(f"    {category.value}:")
+                for key, value in category_preview.as_dict().items():
+                    if key in ("source", "category"):
+                        continue
+                    print(f"        {key}: {value}")
     finally:
         db.close()
 

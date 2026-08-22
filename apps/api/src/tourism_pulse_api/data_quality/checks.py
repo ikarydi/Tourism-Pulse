@@ -51,6 +51,13 @@ IMPOSSIBLE_RANGE_BOUNDS: dict[str, tuple[float, float | None]] = {
     "tourism_turnover_growth": (-500.0, 500.0),
     # Nights-per-resident ratio - always >= 0, no natural upper bound.
     "visitor_pressure": (0.0, None),
+    # Per-category item counts - always >= 0, no natural upper bound.
+    "news_event_mentions": (0.0, None),
+    "news_risk_mentions": (0.0, None),
+    "news_economic_mentions": (0.0, None),
+    "video_event_mentions": (0.0, None),
+    "video_risk_mentions": (0.0, None),
+    "video_economic_mentions": (0.0, None),
     "news_mentions": (0.0, None),
     # GDELT's documented theoretical tone range.
     "news_sentiment": (-100.0, 100.0),
@@ -88,6 +95,13 @@ STALE_THRESHOLD_DAYS: dict[str, int] = {
     # Annual figures, same tier as accommodation_capacity_annual.
     "tourism_turnover_growth": 400,
     "visitor_pressure": 60,
+    # Same cadence tier as their aggregate counterparts.
+    "news_event_mentions": 14,
+    "news_risk_mentions": 14,
+    "news_economic_mentions": 14,
+    "video_event_mentions": 30,
+    "video_risk_mentions": 30,
+    "video_economic_mentions": 30,
 }
 DEFAULT_STALE_THRESHOLD_DAYS = 30
 

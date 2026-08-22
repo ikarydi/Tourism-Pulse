@@ -49,6 +49,16 @@ DIMENSION_MAP: dict[str, str] = {
     # A second, independent capacity-style signal alongside
     # accommodation_capacity/accommodation_capacity_annual.
     "visitor_pressure": "capacity",
+    # Per-category GDELT article counts (classification.item_classifier
+    # tagging each article's title) - see ingestion.gdelt.service.
+    "news_event_mentions": "events",
+    "news_risk_mentions": "risk",
+    "news_economic_mentions": "economic",
+    # Per-category YouTube search-result counts - see
+    # ingestion.youtube.service.
+    "video_event_mentions": "events",
+    "video_risk_mentions": "risk",
+    "video_economic_mentions": "economic",
 }
 
 

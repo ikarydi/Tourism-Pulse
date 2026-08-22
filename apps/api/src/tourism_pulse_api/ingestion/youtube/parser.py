@@ -28,6 +28,20 @@ _SAMPLE_TITLE_COUNT = 5
 
 
 @dataclass(frozen=True)
+class YoutubeVideo:
+    """One video from a search.list response - the full per-item
+    metadata YouTube returns, not just a title. Persisted as a
+    VideoItem row (see ingestion.youtube.service) so it's individually
+    queryable, unlike the aggregate search_interest Signal.
+    """
+
+    video_id: str
+    title: str
+    channel: str | None
+    published_at: datetime | None
+
+
+@dataclass(frozen=True)
 class YoutubeSearchObservation:
     """One search.list response for one query, straight from YouTube."""
 
@@ -35,6 +49,21 @@ class YoutubeSearchObservation:
     total_results: int
     retrieved_at: datetime
     sample_video_titles: list[str]
+    videos: list[YoutubeVideo]
+
+
+def _parse_published_at(raw: str | None) -> datetime | None:
+    """YouTube's publishedAt is RFC 3339, e.g. "2026-08-19T14:00:00Z". A
+    missing or malformed date on one item shouldn't reject the whole
+    response - stored as None instead.
+    """
+    if raw is None:
+        return None
+
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def parse_youtube_search(text: str, *, query: str) -> YoutubeSearchObservation:
@@ -52,8 +81,16 @@ def parse_youtube_search(text: str, *, query: str) -> YoutubeSearchObservation:
 
     try:
         total_results = int(payload["pageInfo"]["totalResults"])
-        sample_video_titles = [
-            item["snippet"]["title"] for item in payload.get("items", [])[:_SAMPLE_TITLE_COUNT]
+        items = payload.get("items", [])
+        sample_video_titles = [item["snippet"]["title"] for item in items[:_SAMPLE_TITLE_COUNT]]
+        videos = [
+            YoutubeVideo(
+                video_id=item["id"]["videoId"],
+                title=item["snippet"]["title"],
+                channel=item["snippet"].get("channelTitle"),
+                published_at=_parse_published_at(item["snippet"].get("publishedAt")),
+            )
+            for item in items
         ]
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError(f"Unexpected YouTube response shape: {exc}") from exc
@@ -66,4 +103,5 @@ def parse_youtube_search(text: str, *, query: str) -> YoutubeSearchObservation:
         total_results=total_results,
         retrieved_at=datetime.now(UTC),
         sample_video_titles=sample_video_titles,
+        videos=videos,
     )

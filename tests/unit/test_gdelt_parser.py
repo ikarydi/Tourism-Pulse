@@ -56,6 +56,36 @@ def test_missing_articles_key_means_zero_results() -> None:
 
     assert observation.article_count == 0
     assert observation.sample_article_titles == []
+    assert observation.articles == []
+
+
+def test_parses_full_article_list_not_just_the_sample(artlist_response_text: str) -> None:
+    observation = parse_gdelt_artlist(artlist_response_text, query="Budapest tourism")
+
+    assert len(observation.articles) == 3
+    first = observation.articles[0]
+    assert first.title == "Egy felhavi magyar fizetesbe faj a kulfoldieknek a Sziget"
+    assert first.domain == "privatbankar.hu"
+    assert first.language == "Hungarian"
+    assert first.url.startswith("https://privatbankar.hu/")
+
+
+def test_parses_seendate_into_a_datetime(artlist_response_text: str) -> None:
+    observation = parse_gdelt_artlist(artlist_response_text, query="Budapest tourism")
+
+    first = observation.articles[0]
+    assert first.seendate is not None
+    assert first.seendate.year == 2026
+    assert first.seendate.month == 8
+    assert first.seendate.day == 19
+
+
+def test_missing_seendate_is_none_not_an_error() -> None:
+    text = '{"articles": [{"url": "https://a", "title": "T", "domain": "a.com"}]}'
+
+    observation = parse_gdelt_artlist(text, query="q")
+
+    assert observation.articles[0].seendate is None
 
 
 def test_artlist_invalid_json_raises_value_error() -> None:

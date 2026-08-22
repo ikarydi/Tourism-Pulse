@@ -38,6 +38,40 @@ def test_parses_sample_video_titles(sample_response_text: str) -> None:
     ]
 
 
+def test_parses_full_video_list_not_just_the_sample(sample_response_text: str) -> None:
+    observation = parse_youtube_search(sample_response_text, query="Budapest travel guide")
+
+    assert len(observation.videos) == 3
+    first = observation.videos[0]
+    assert first.video_id == "abc123"
+    assert first.title == "Budapest Travel Guide 2026 - Top 10 Things to Do"
+    assert first.channel == "Wanderlust Channel"
+
+
+def test_missing_published_at_is_none_not_an_error() -> None:
+    text = (
+        '{"pageInfo": {"totalResults": 1}, "items": [{"id": {"videoId": "x"}, '
+        '"snippet": {"title": "T", "channelTitle": "C"}}]}'
+    )
+
+    observation = parse_youtube_search(text, query="test")
+
+    assert observation.videos[0].published_at is None
+
+
+def test_parses_published_at_when_present() -> None:
+    text = (
+        '{"pageInfo": {"totalResults": 1}, "items": [{"id": {"videoId": "x"}, '
+        '"snippet": {"title": "T", "channelTitle": "C", '
+        '"publishedAt": "2026-08-19T14:00:00Z"}}]}'
+    )
+
+    observation = parse_youtube_search(text, query="test")
+
+    assert observation.videos[0].published_at is not None
+    assert observation.videos[0].published_at.year == 2026
+
+
 def test_handles_missing_items_gracefully() -> None:
     text = '{"pageInfo": {"totalResults": 500}}'
 
@@ -45,6 +79,7 @@ def test_handles_missing_items_gracefully() -> None:
 
     assert observation.total_results == 500
     assert observation.sample_video_titles == []
+    assert observation.videos == []
 
 
 def test_invalid_json_raises_value_error() -> None:

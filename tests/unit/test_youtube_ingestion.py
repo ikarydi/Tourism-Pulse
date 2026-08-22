@@ -11,6 +11,7 @@ from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.youtube.parser import (
     YOUTUBE_SOURCE_NAME,
     YoutubeSearchObservation,
+    YoutubeVideo,
 )
 from tourism_pulse_api.ingestion.youtube.service import (
     build_preview,
@@ -24,12 +25,14 @@ def make_observation(
     query: str = "Budapest travel guide",
     retrieved_at: datetime = datetime(2026, 8, 21, 10, 0, tzinfo=UTC),
     sample_video_titles: list[str] | None = None,
+    videos: list[YoutubeVideo] | None = None,
 ) -> YoutubeSearchObservation:
     return YoutubeSearchObservation(
         query=query,
         total_results=total_results,
         retrieved_at=retrieved_at,
         sample_video_titles=sample_video_titles or ["Sample Video 1", "Sample Video 2"],
+        videos=videos if videos is not None else [],
     )
 
 

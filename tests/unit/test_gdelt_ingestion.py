@@ -10,6 +10,7 @@ from tourism_pulse_api.db.models.source_observation import SourceObservation
 from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.gdelt.parser import (
     GDELT_SOURCE_NAME,
+    GdeltArticle,
     GdeltArticleListObservation,
     GdeltToneObservation,
 )
@@ -27,12 +28,14 @@ def make_mentions_observation(
     query: str = "Budapest tourism",
     retrieved_at: datetime = datetime(2026, 8, 19, 10, 0, tzinfo=UTC),
     sample_article_titles: list[str] | None = None,
+    articles: list[GdeltArticle] | None = None,
 ) -> GdeltArticleListObservation:
     return GdeltArticleListObservation(
         query=query,
         article_count=article_count,
         retrieved_at=retrieved_at,
         sample_article_titles=sample_article_titles or ["Sample Article 1", "Sample Article 2"],
+        articles=articles if articles is not None else [],
     )
 
 
