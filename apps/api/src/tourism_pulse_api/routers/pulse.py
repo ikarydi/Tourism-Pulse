@@ -9,6 +9,7 @@ from tourism_pulse_api.db.session import get_db
 from tourism_pulse_api.pulse.anomaly import detect_anomaly
 from tourism_pulse_api.pulse.engine import PulseEngine
 from tourism_pulse_api.pulse.event_adapter import event_to_signal
+from tourism_pulse_api.pulse.insights import build_all_dimension_evidence
 from tourism_pulse_api.pulse.interpretation import interpret_pulse
 from tourism_pulse_api.pulse.seasonal_signal_adapter import (
     SEASONAL_SIGNAL_TYPES,
@@ -21,6 +22,7 @@ from tourism_pulse_api.pulse.source_registry import (
 )
 from tourism_pulse_api.pulse.trend_analysis import analyze_trend
 from tourism_pulse_api.schemas.pulse import (
+    DimensionEvidenceRead,
     PulseConfidenceRead,
     PulseDimensionsRead,
     PulseInterpretationRead,
@@ -157,6 +159,24 @@ def calculate_place_pulse(
         pulse=result.pulse,
         confidence=result.confidence,
     )
+
+    # Evidence (pulse.insights) - which signals/articles/videos/events
+    # actually explain each dimension - is only computed on the real
+    # persist=true calculation, same reasoning as the snapshot write
+    # below: a bulk overview scan across many places shouldn't pay for
+    # per-dimension NewsArticle/VideoItem queries on every single one.
+    evidence = (
+        build_all_dimension_evidence(
+            db,
+            place_id=place_id,
+            pulse=result.pulse,
+            signals=signals,
+            events=events,
+        )
+        if persist
+        else None
+    )
+
     # Bulk/overview callers (e.g. a multi-destination comparison view) pass
     # persist=false so browsing many places at once doesn't flood
     # pulse_snapshots with near-duplicate rows - trend/history still read
@@ -203,6 +223,14 @@ def calculate_place_pulse(
             strengths=interpretation["strengths"],
             weaknesses=interpretation["weaknesses"],
             data_quality=interpretation["data_quality"],
+        ),
+        evidence=(
+            {
+                dimension: DimensionEvidenceRead.model_validate(dimension_evidence)
+                for dimension, dimension_evidence in evidence.items()
+            }
+            if evidence is not None
+            else None
         ),
     )
 

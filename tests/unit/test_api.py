@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
-
 from tourism_pulse_api.main import app
 
 client = TestClient(app)
@@ -228,7 +227,7 @@ def test_calculate_place_pulse() -> None:
 
 
 def test_event_contributes_to_place_pulse() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     event_start = (now - timedelta(hours=1)).isoformat()
     event_end = (now + timedelta(hours=1)).isoformat()
 
@@ -395,6 +394,55 @@ def test_pulse_persist_false_does_not_write_a_snapshot() -> None:
 
     history_after = client.get(f"/places/{place_id}/pulse/history").json()
     assert len(history_after) == 1
+
+
+def test_pulse_evidence_only_computed_on_persist_true() -> None:
+    destination_response = client.post(
+        "/destinations",
+        json={
+            "country_code": "HU",
+            "name": "Evidence Test Destination",
+        },
+    )
+    destination_id = destination_response.json()["id"]
+
+    place_response = client.post(
+        f"/destinations/{destination_id}/places",
+        json={
+            "name": "Evidence Test Place",
+            "place_type": "destination",
+        },
+    )
+    place_id = place_response.json()["id"]
+
+    client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "occupancy",
+            "value": 80,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+    )
+
+    persisted_response = client.get(f"/places/{place_id}/pulse")
+    assert persisted_response.status_code == 200
+    persisted_pulse = persisted_response.json()
+    assert persisted_pulse["evidence"] is not None
+    assert set(persisted_pulse["evidence"].keys()) == {
+        "demand", "capacity", "events", "environment", "risk", "economic",
+    }
+    assert persisted_pulse["evidence"]["demand"]["contributing_signals"][0][
+        "signal_type"
+    ] == "occupancy"
+
+    bulk_response = client.get(
+        f"/places/{place_id}/pulse",
+        params={"persist": "false"},
+    )
+    assert bulk_response.status_code == 200
+    assert bulk_response.json()["evidence"] is None
 
 
 def test_pulse_trend_uses_previous_snapshot() -> None:

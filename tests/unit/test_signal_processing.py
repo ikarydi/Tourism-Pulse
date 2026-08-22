@@ -3,7 +3,9 @@ from decimal import Decimal
 
 import pytest
 from tourism_pulse_api.db.models.signal import Signal
+from tourism_pulse_api.pulse.signal_normalization import SIGNAL_NORMALIZERS
 from tourism_pulse_api.pulse.signal_processing import (
+    DEFAULT_HALF_LIFE_HOURS,
     calculate_age_hours,
     get_half_life_hours,
     process_signal,
@@ -111,6 +113,22 @@ def test_half_life_by_signal_type(
 def test_unknown_signal_type_rejected() -> None:
     with pytest.raises(ValueError):
         get_half_life_hours("unknown")
+
+
+def test_every_normalizable_signal_type_has_a_half_life() -> None:
+    # Regression test: every signal_type in SIGNAL_NORMALIZERS reaches
+    # process_signal -> get_half_life_hours via routers/pulse.py (any
+    # signal_type not in pulse.seasonal_signal_adapter.SEASONAL_SIGNAL_TYPES
+    # takes this path) - a normalizer with no matching half-life entry
+    # crashes the real /places/{id}/pulse endpoint with a ValueError for
+    # any place that has that kind of signal (caught live: adding 11 new
+    # signal_types across ingestion adapters without also registering
+    # their half-life broke the pulse endpoint for real Eurostat/GDACS/
+    # OpenAQ/Wikipedia/GDELT/YouTube data - none of the unit tests using
+    # only the original 4 signal types could have caught it).
+    missing = sorted(set(SIGNAL_NORMALIZERS) - set(DEFAULT_HALF_LIFE_HOURS))
+
+    assert missing == []
 
 
 def test_process_signal_calculates_age_and_half_life() -> None:

@@ -47,6 +47,31 @@ DEFAULT_HALF_LIFE_HOURS: dict[str, float] = {
     # A live airspace snapshot, same reasoning as weather_comfort - stale
     # fast.
     "airport_traffic": 6.0,
+    # Wikipedia's 30-day rolling pageview total - same re-ingestion-cadence
+    # assumption as search_interest above (both are "web attention" signals
+    # re-fetched a few times a week, not daily).
+    "wikipedia_pageviews": 72.0,
+    # GDACS refreshes every ~6 minutes - a live-alert source, same tier as
+    # weather_comfort/airport_traffic.
+    "disaster_alert_severity": 6.0,
+    # Air quality changes about as fast as weather.
+    "air_quality_pm25": 6.0,
+    # Eurostat's accommodation-sector turnover growth is annual, same
+    # reasoning/value as accommodation_capacity_annual above.
+    "tourism_turnover_growth": 8760.0,
+    # Derived from tourism_nights (monthly) + population (annual) - the
+    # monthly figure is the faster-moving input, so it gets that cadence.
+    "visitor_pressure": 720.0,
+    # Per-category GDELT article counts - same cadence as news_mentions/
+    # news_sentiment above (they're subsets of the same underlying fetch).
+    "news_event_mentions": 24.0,
+    "news_risk_mentions": 24.0,
+    "news_economic_mentions": 24.0,
+    # Per-category YouTube search-result counts - same cadence as
+    # search_interest above (same underlying fetch).
+    "video_event_mentions": 72.0,
+    "video_risk_mentions": 72.0,
+    "video_economic_mentions": 72.0,
 }
 
 
