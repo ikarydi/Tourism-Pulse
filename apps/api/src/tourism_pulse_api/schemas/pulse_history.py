@@ -12,6 +12,8 @@ class PulseSnapshotRead(BaseModel):
     capacity: float
     events: float
     environment: float
+    risk: float
+    economic: float
     confidence_score: float
     confidence_coverage: float
 

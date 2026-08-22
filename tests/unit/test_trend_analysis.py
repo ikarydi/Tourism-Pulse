@@ -10,6 +10,8 @@ def make_snapshot(
     capacity: float = 50,
     events: float = 50,
     environment: float = 50,
+    risk: float = 50,
+    economic: float = 50,
 ) -> PulseSnapshot:
     return PulseSnapshot(
         place_id=1,
@@ -19,6 +21,8 @@ def make_snapshot(
         capacity=capacity,
         events=events,
         environment=environment,
+        risk=risk,
+        economic=economic,
         confidence_score=80,
         confidence_coverage=100,
     )

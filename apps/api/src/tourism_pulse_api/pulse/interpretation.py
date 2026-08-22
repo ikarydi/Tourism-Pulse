@@ -15,6 +15,8 @@ def interpret_pulse(
         "Capacity": pulse.capacity,
         "Events": pulse.events,
         "Environment": pulse.environment,
+        "Risk": pulse.risk,
+        "Economic": pulse.economic,
     }
 
     missing_dimensions = [

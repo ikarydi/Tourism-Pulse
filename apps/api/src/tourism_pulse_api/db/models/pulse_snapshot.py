@@ -48,6 +48,18 @@ class PulseSnapshot(Base):
         nullable=False,
     )
 
+    risk: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        server_default="0",
+    )
+
+    economic: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        server_default="0",
+    )
+
     confidence_score: Mapped[float] = mapped_column(
         Float,
         nullable=False,

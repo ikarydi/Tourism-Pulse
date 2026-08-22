@@ -12,6 +12,8 @@ def make_pulse(
     capacity: float = 60.0,
     events: float = 60.0,
     environment: float = 60.0,
+    risk: float = 60.0,
+    economic: float = 60.0,
 ) -> PulseResult:
     return PulseResult(
         pulse=pulse,
@@ -19,6 +21,8 @@ def make_pulse(
         capacity=capacity,
         events=events,
         environment=environment,
+        risk=risk,
+        economic=economic,
     )
 
 

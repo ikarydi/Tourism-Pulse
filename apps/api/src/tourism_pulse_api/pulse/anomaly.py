@@ -42,6 +42,8 @@ def _drivers(
         "Capacity": current.capacity - previous.capacity,
         "Events": current.events - previous.events,
         "Environment": current.environment - previous.environment,
+        "Risk": current.risk - previous.risk,
+        "Economic": current.economic - previous.economic,
     }
 
     return [

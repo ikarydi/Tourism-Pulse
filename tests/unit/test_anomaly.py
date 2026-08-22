@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from tourism_pulse_api.db.models.pulse_snapshot import PulseSnapshot
 from tourism_pulse_api.pulse.anomaly import detect_anomaly
@@ -11,15 +11,19 @@ def make_snapshot(
     capacity: float = 50,
     events: float = 50,
     environment: float = 50,
+    risk: float = 50,
+    economic: float = 50,
 ) -> PulseSnapshot:
     return PulseSnapshot(
         place_id=1,
-        calculated_at=datetime.now(timezone.utc),
+        calculated_at=datetime.now(UTC),
         pulse=pulse,
         demand=demand,
         capacity=capacity,
         events=events,
         environment=environment,
+        risk=risk,
+        economic=economic,
         confidence_score=confidence_score,
         confidence_coverage=100,
     )

@@ -6,6 +6,8 @@ class PulseDimensionsRead(BaseModel):
     capacity: float
     events: float
     environment: float
+    risk: float
+    economic: float
 
 
 class PulseConfidenceRead(BaseModel):

@@ -60,6 +60,8 @@ class PulseEngine:
             "capacity": [],
             "events": [],
             "environment": [],
+            "risk": [],
+            "economic": [],
         }
 
         dimension_reliabilities: dict[str, list[float]] = {
@@ -67,6 +69,8 @@ class PulseEngine:
             "capacity": [],
             "events": [],
             "environment": [],
+            "risk": [],
+            "economic": [],
         }
         reliabilities: list[float] = []
         freshness_values: list[float] = []

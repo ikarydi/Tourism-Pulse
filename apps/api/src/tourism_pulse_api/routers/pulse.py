@@ -170,6 +170,8 @@ def calculate_place_pulse(
             capacity=result.pulse.capacity,
             events=result.pulse.events,
             environment=result.pulse.environment,
+            risk=result.pulse.risk,
+            economic=result.pulse.economic,
             confidence_score=result.confidence.score,
             confidence_coverage=result.confidence.coverage,
         )
@@ -185,6 +187,8 @@ def calculate_place_pulse(
             capacity=result.pulse.capacity,
             events=result.pulse.events,
             environment=result.pulse.environment,
+            risk=result.pulse.risk,
+            economic=result.pulse.economic,
         ),
         confidence=PulseConfidenceRead(
             score=result.confidence.score,

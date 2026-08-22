@@ -106,7 +106,12 @@ def test_engine_missing_dimensions_reduce_confidence() -> None:
     assert result.pulse.capacity == 0.0
     assert result.pulse.events == 0.0
     assert result.pulse.environment == 0.0
-    assert result.confidence.coverage == 25.0
+    assert result.pulse.risk == 0.0
+    assert result.pulse.economic == 0.0
+    assert result.confidence.coverage == pytest.approx(
+        100 / 6,
+        abs=0.01,
+    )
 
 def test_engine_aggregates_multiple_signals_by_reliability() -> None:
     engine = PulseEngine()

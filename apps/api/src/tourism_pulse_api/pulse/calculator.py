@@ -13,6 +13,8 @@ class PulseResult:
     capacity: float
     events: float
     environment: float
+    risk: float
+    economic: float
 
 
 class PulseCalculator:
@@ -26,12 +28,16 @@ class PulseCalculator:
         capacity: float,
         events: float,
         environment: float,
+        risk: float,
+        economic: float,
     ) -> PulseResult:
         dimensions = {
             "demand": demand,
             "capacity": capacity,
             "events": events,
             "environment": environment,
+            "risk": risk,
+            "economic": economic,
         }
 
         for name, value in dimensions.items():
@@ -45,6 +51,8 @@ class PulseCalculator:
             + capacity * DIMENSION_WEIGHTS["capacity"]
             + events * DIMENSION_WEIGHTS["events"]
             + environment * DIMENSION_WEIGHTS["environment"]
+            + risk * DIMENSION_WEIGHTS["risk"]
+            + economic * DIMENSION_WEIGHTS["economic"]
         )
 
         return PulseResult(
@@ -53,8 +61,10 @@ class PulseCalculator:
             capacity=round(capacity * 100, 2),
             events=round(events * 100, 2),
             environment=round(environment * 100, 2),
+            risk=round(risk * 100, 2),
+            economic=round(economic * 100, 2),
         )
-    
+
     def calculate_available(
         self,
         *,
@@ -91,5 +101,6 @@ class PulseCalculator:
                 dimensions.get("environment", 0.0) * 100,
                 2,
             ),
+            risk=round(dimensions.get("risk", 0.0) * 100, 2),
+            economic=round(dimensions.get("economic", 0.0) * 100, 2),
         )
-    
