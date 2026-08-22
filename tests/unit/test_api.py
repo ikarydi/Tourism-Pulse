@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from tourism_pulse_api.main import app
@@ -443,6 +444,99 @@ def test_pulse_evidence_only_computed_on_persist_true() -> None:
     )
     assert bulk_response.status_code == 200
     assert bulk_response.json()["evidence"] is None
+
+
+def test_pulse_narrative_is_reused_within_the_refresh_window() -> None:
+    destination_response = client.post(
+        "/destinations",
+        json={
+            "country_code": "HU",
+            "name": "Narrative Test Destination",
+        },
+    )
+    destination_id = destination_response.json()["id"]
+
+    place_response = client.post(
+        f"/destinations/{destination_id}/places",
+        json={
+            "name": "Narrative Test Place",
+            "place_type": "destination",
+        },
+    )
+    place_id = place_response.json()["id"]
+
+    client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "occupancy",
+            "value": 80,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+    )
+
+    with patch(
+        "tourism_pulse_api.routers.pulse.generate_narrative",
+        return_value="A generated narrative.",
+    ) as mock_generate:
+        first_response = client.get(f"/places/{place_id}/pulse")
+        assert first_response.status_code == 200
+        assert first_response.json()["narrative"] == "A generated narrative."
+        assert mock_generate.call_count == 1
+
+        # A second persist=true call within the refresh window must reuse
+        # the stored narrative rather than calling the LLM again.
+        second_response = client.get(f"/places/{place_id}/pulse")
+        assert second_response.status_code == 200
+        assert second_response.json()["narrative"] == "A generated narrative."
+        assert mock_generate.call_count == 1
+
+    # persist=false never computes (or reuses) a narrative at all.
+    bulk_response = client.get(
+        f"/places/{place_id}/pulse",
+        params={"persist": "false"},
+    )
+    assert bulk_response.json()["narrative"] is None
+
+
+def test_pulse_narrative_is_none_without_a_configured_provider() -> None:
+    # No settings.groq_api_key configured in the test environment - this
+    # confirms the real (unmocked) generate_narrative degrades to None
+    # rather than raising, end to end through the actual pulse endpoint.
+    destination_response = client.post(
+        "/destinations",
+        json={
+            "country_code": "HU",
+            "name": "No Narrative Test Destination",
+        },
+    )
+    destination_id = destination_response.json()["id"]
+
+    place_response = client.post(
+        f"/destinations/{destination_id}/places",
+        json={
+            "name": "No Narrative Test Place",
+            "place_type": "destination",
+        },
+    )
+    place_id = place_response.json()["id"]
+
+    client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "occupancy",
+            "value": 80,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+    )
+
+    response = client.get(f"/places/{place_id}/pulse")
+
+    assert response.status_code == 200
+    assert response.json()["narrative"] is None
 
 
 def test_pulse_trend_uses_previous_snapshot() -> None:

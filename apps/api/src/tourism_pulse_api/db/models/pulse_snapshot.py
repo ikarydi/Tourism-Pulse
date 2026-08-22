@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey
+from sqlalchemy import DateTime, Float, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from tourism_pulse_api.db.base import Base
@@ -68,4 +68,12 @@ class PulseSnapshot(Base):
     confidence_coverage: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+    )
+
+    # LLM-written analyst narrative (pulse.narrative) - nullable: no LLM
+    # provider configured (settings.groq_api_key unset), or generation
+    # failed, or this snapshot predates the feature entirely.
+    narrative: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )

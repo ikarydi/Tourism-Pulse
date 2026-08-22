@@ -32,6 +32,19 @@ class Settings(BaseSettings):
     # command. Free tier available at https://explore.openaq.org/register.
     openaq_api_key: str | None = None
 
+    # Optional: required only for pulse.narrative's LLM-written insight
+    # paragraph (spec section 24: "LLMs handle explanation, synthesis" -
+    # the Pulse engine itself stays deterministic regardless). Free
+    # signup at https://console.groq.com - chosen over a paid provider
+    # deliberately. Narrative is simply omitted (not an error) when unset,
+    # same pattern as every other optional external dependency above.
+    groq_api_key: str | None = None
+    narrative_model: str = "llama-3.3-70b-versatile"
+    # How long a stored narrative stays valid before routers/pulse.py
+    # regenerates it on the next persist=true call - bounds LLM spend to
+    # roughly one call per place per window, not one per page view.
+    narrative_refresh_hours: int = 6
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

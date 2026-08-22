@@ -11,6 +11,7 @@ from tourism_pulse_api.pulse.engine import PulseEngine
 from tourism_pulse_api.pulse.event_adapter import event_to_signal
 from tourism_pulse_api.pulse.insights import build_all_dimension_evidence
 from tourism_pulse_api.pulse.interpretation import interpret_pulse
+from tourism_pulse_api.pulse.narrative import generate_narrative
 from tourism_pulse_api.pulse.seasonal_signal_adapter import (
     SEASONAL_SIGNAL_TYPES,
     process_seasonal_signal,
@@ -37,6 +38,7 @@ from tourism_pulse_api.schemas.pulse_trend import (
     PulseTrendAnalysisRead,
     PulseTrendDriversRead,
 )
+from tourism_pulse_api.settings import settings
 
 router = APIRouter(
     prefix="/places/{place_id}/pulse",
@@ -177,6 +179,32 @@ def calculate_place_pulse(
         else None
     )
 
+    # Narrative (pulse.narrative) - the LLM half of the insight engine,
+    # built on top of `evidence` above - is throttled independently of
+    # the evidence computation itself: reuse the previous snapshot's
+    # narrative when it's still within settings.narrative_refresh_hours,
+    # so a real dashboard visit doesn't pay LLM latency/cost on every
+    # single page load, only roughly once per place per refresh window.
+    narrative: str | None = None
+
+    if persist:
+        narrative_is_fresh = (
+            previous_snapshot is not None
+            and previous_snapshot.narrative is not None
+            and (now - previous_snapshot.calculated_at)
+            < timedelta(hours=settings.narrative_refresh_hours)
+        )
+
+        if narrative_is_fresh and previous_snapshot is not None:
+            narrative = previous_snapshot.narrative
+        elif evidence is not None:
+            narrative = generate_narrative(
+                place_name=place.name,
+                pulse=result.pulse,
+                evidence=evidence,
+                headline=str(interpretation["headline"]),
+            )
+
     # Bulk/overview callers (e.g. a multi-destination comparison view) pass
     # persist=false so browsing many places at once doesn't flood
     # pulse_snapshots with near-duplicate rows - trend/history still read
@@ -194,6 +222,7 @@ def calculate_place_pulse(
             economic=result.pulse.economic,
             confidence_score=result.confidence.score,
             confidence_coverage=result.confidence.coverage,
+            narrative=narrative,
         )
 
         db.add(snapshot)
@@ -232,6 +261,7 @@ def calculate_place_pulse(
             if evidence is not None
             else None
         ),
+        narrative=narrative,
     )
 
 @router.get(

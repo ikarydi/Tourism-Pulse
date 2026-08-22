@@ -16,5 +16,6 @@ class PulseSnapshotRead(BaseModel):
     economic: float
     confidence_score: float
     confidence_coverage: float
+    narrative: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
