@@ -43,6 +43,9 @@ IMPOSSIBLE_RANGE_BOUNDS: dict[str, tuple[float, float | None]] = {
     # GDACS alertscore tops out around 3 (Red); a generous upper bound
     # in case an unusually extreme episode-level score exceeds it.
     "disaster_alert_severity": (0.0, 10.0),
+    # PM2.5 concentration, µg/m3 - a generous ceiling above even extreme
+    # wildfire-smoke episodes.
+    "air_quality_pm25": (0.0, 1000.0),
     "news_mentions": (0.0, None),
     # GDELT's documented theoretical tone range.
     "news_sentiment": (-100.0, 100.0),
@@ -75,6 +78,8 @@ STALE_THRESHOLD_DAYS: dict[str, int] = {
     # GDACS refreshes every ~6 minutes - a live-alert source like
     # airport_traffic, not a periodic statistical release.
     "disaster_alert_severity": 1,
+    # Same cadence tier as weather - air quality changes fast.
+    "air_quality_pm25": 2,
 }
 DEFAULT_STALE_THRESHOLD_DAYS = 30
 

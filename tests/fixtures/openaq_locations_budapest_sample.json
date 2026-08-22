@@ -1,0 +1,36 @@
+{
+  "meta": {"page": 1, "limit": 100, "found": 2},
+  "results": [
+    {
+      "id": 8901,
+      "name": "Budapest Kozponti",
+      "locality": "Budapest",
+      "coordinates": {"latitude": 47.4979, "longitude": 19.0402},
+      "sensors": [
+        {
+          "id": 55001,
+          "name": "pm25 µg/m³",
+          "parameter": {"id": 2, "name": "pm25", "units": "µg/m³", "displayName": "PM2.5"}
+        },
+        {
+          "id": 55002,
+          "name": "no2 µg/m³",
+          "parameter": {"id": 5, "name": "no2", "units": "µg/m³", "displayName": "NO2"}
+        }
+      ]
+    },
+    {
+      "id": 8902,
+      "name": "Budapest Ferihegy",
+      "locality": "Budapest",
+      "coordinates": {"latitude": 47.43, "longitude": 19.26},
+      "sensors": [
+        {
+          "id": 55010,
+          "name": "no2 µg/m³",
+          "parameter": {"id": 5, "name": "no2", "units": "µg/m³", "displayName": "NO2"}
+        }
+      ]
+    }
+  ]
+}

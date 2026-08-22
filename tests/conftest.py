@@ -144,6 +144,12 @@ def _seed_sources(session_factory) -> None:
         {"name": "wikipedia", "category": "social", "reliability": "0.750"},
         {"name": "gdacs", "category": "official", "reliability": "0.900"},
         {
+            "name": "openaq",
+            "category": "official",
+            "reliability": "0.850",
+            "is_active": False,
+        },
+        {
             "name": "airbnb",
             "category": "commercial",
             "reliability": "0.900",

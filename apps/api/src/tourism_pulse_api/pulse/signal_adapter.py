@@ -38,6 +38,10 @@ DIMENSION_MAP: dict[str, str] = {
     # the first signal to feed the `risk` dimension. See
     # pulse.disaster_risk for its (inverted-polarity) normalizer.
     "disaster_alert_severity": "risk",
+    # OpenAQ nearest-station PM2.5 reading - fills the spec's Environment
+    # source category alongside weather_comfort. See pulse.air_quality
+    # for its (inverted-polarity) normalizer.
+    "air_quality_pm25": "environment",
 }
 
 

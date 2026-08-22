@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     opensky_client_id: str | None = None
     opensky_client_secret: str | None = None
 
+    # Optional: required only for the OpenAQ air-quality ingestion
+    # command. Free tier available at https://explore.openaq.org/register.
+    openaq_api_key: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

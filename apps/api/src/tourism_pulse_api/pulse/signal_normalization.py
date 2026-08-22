@@ -1,5 +1,6 @@
 from collections.abc import Callable
 
+from tourism_pulse_api.pulse.air_quality import normalize_pm25
 from tourism_pulse_api.pulse.airport_traffic import normalize_airport_traffic
 from tourism_pulse_api.pulse.disaster_risk import normalize_disaster_alert_severity
 from tourism_pulse_api.pulse.news_mentions import normalize_news_mentions
@@ -40,6 +41,8 @@ SIGNAL_NORMALIZERS: dict[str, Normalizer] = {
     "wikipedia_pageviews": normalize_wikipedia_pageviews,
     # GDACS disaster-alert severity - see pulse.disaster_risk.
     "disaster_alert_severity": normalize_disaster_alert_severity,
+    # OpenAQ PM2.5 reading - see pulse.air_quality.
+    "air_quality_pm25": normalize_pm25,
 }
 
 

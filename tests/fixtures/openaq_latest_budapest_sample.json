@@ -1,0 +1,19 @@
+{
+  "meta": {"page": 1, "limit": 100, "found": 2},
+  "results": [
+    {
+      "datetime": {"utc": "2026-08-21T09:00:00Z", "local": "2026-08-21T11:00:00+02:00"},
+      "value": 14.6,
+      "sensorsId": 55001,
+      "locationsId": 8901,
+      "coordinates": {"latitude": 47.4979, "longitude": 19.0402}
+    },
+    {
+      "datetime": {"utc": "2026-08-21T09:00:00Z", "local": "2026-08-21T11:00:00+02:00"},
+      "value": 22.1,
+      "sensorsId": 55002,
+      "locationsId": 8901,
+      "coordinates": {"latitude": 47.4979, "longitude": 19.0402}
+    }
+  ]
+}
