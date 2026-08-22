@@ -52,6 +52,7 @@ for _signal_type, _dimension in DIMENSION_MAP.items():
 
 @dataclass(frozen=True)
 class EvidenceSignal:
+    id: int
     signal_type: str
     source: str
     value: float
@@ -77,6 +78,7 @@ class EvidenceVideo:
 
 @dataclass(frozen=True)
 class EvidenceEvent:
+    id: int
     name: str
     event_type: str
     start_at: datetime
@@ -134,6 +136,7 @@ def _evidence_for_dimension(
         value=dimension_value,
         contributing_signals=[
             EvidenceSignal(
+                id=signal.id,
                 signal_type=signal.signal_type,
                 source=signal.source,
                 value=float(signal.value),
@@ -162,6 +165,7 @@ def _evidence_for_dimension(
         ],
         related_events=[
             EvidenceEvent(
+                id=event.id,
                 name=event.name,
                 event_type=event.event_type,
                 start_at=event.start_at,

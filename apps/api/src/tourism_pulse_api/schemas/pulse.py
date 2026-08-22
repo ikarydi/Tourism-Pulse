@@ -30,6 +30,7 @@ class PulseInterpretationRead(BaseModel):
 
 
 class EvidenceSignalRead(BaseModel):
+    id: int
     signal_type: str
     source: str
     value: float
@@ -58,6 +59,7 @@ class EvidenceVideoRead(BaseModel):
 
 
 class EvidenceEventRead(BaseModel):
+    id: int
     name: str
     event_type: str
     start_at: datetime

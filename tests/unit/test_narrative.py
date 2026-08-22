@@ -24,6 +24,7 @@ def make_evidence() -> dict[str, DimensionEvidence]:
         value=60.0,
         contributing_signals=[
             EvidenceSignal(
+                id=1,
                 signal_type="tourism_nights",
                 source="ksh",
                 value=1000.0,
