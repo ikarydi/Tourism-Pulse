@@ -1,0 +1,119 @@
+.pulse-hero {
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.pulse-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.pulse-hero-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pulse-hero-score {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.pulse-hero-score-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pulse-hero-trend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.pulse-hero-trend-arrow {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.pulse-hero-trend.up .pulse-hero-trend-arrow,
+.pulse-hero-trend.up strong {
+  color: var(--status-good);
+}
+
+.pulse-hero-trend.down .pulse-hero-trend-arrow,
+.pulse-hero-trend.down strong {
+  color: var(--status-bad);
+}
+
+.pulse-hero-trend div {
+  display: flex;
+  flex-direction: column;
+}
+
+.pulse-hero-trend strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.pulse-hero-trend span {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.pulse-hero-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.pulse-hero-body > .dimension-radar {
+  flex-shrink: 0;
+}
+
+.pulse-hero-body > .dimension-list {
+  flex: 1;
+  min-width: 240px;
+}
+
+.pulse-hero-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pulse-hero-footer strong {
+  color: var(--text);
+}
+
+.quality-high {
+  color: var(--status-good);
+}
+
+.quality-medium {
+  color: var(--status-warn);
+}
+
+.quality-low {
+  color: var(--status-bad);
+}

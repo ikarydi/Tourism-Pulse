@@ -1,0 +1,90 @@
+.dimension-radar {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.dimension-radar svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.radar-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.radar-spoke {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.radar-fill {
+  fill: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.radar-outline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.radar-point {
+  stroke: var(--bg);
+  stroke-width: 1.5;
+  transition: r 0.15s ease;
+}
+
+.radar-point.selected {
+  stroke: var(--text);
+}
+
+.radar-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.radar-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.radar-label:hover,
+.radar-label.selected {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.radar-label-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dim-color);
+  box-shadow: 0 0 8px var(--dim-color);
+  flex-shrink: 0;
+}
+
+.radar-label-text strong {
+  margin-left: 6px;
+  font-family: var(--font-display);
+  color: var(--text);
+  font-size: 13px;
+}

@@ -1,0 +1,57 @@
+.dimension-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dimension-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 34px;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 8px;
+  text-align: left;
+}
+
+.dimension-row:hover,
+.dimension-row.selected {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dimension-row-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dimension-row.selected .dimension-row-label {
+  color: var(--text);
+}
+
+.dimension-row-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.dimension-row-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.dimension-row-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 14px;
+  text-align: right;
+}

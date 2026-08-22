@@ -1,0 +1,63 @@
+/* Design tokens - the redesign's single source of truth for color,
+type, spacing and elevation. Dark analyst-console direction (kept
+deliberately - it suits "for tourism professionals" reading a live
+intelligence feed), but every token here is new/reconsidered for the
+6-dimension model and the richer content this app now surfaces. */
+
+:root {
+  /* --- surfaces --- */
+  --bg: #05090f;
+  --surface: #0c1622;
+  --surface-raised: #101e2e;
+  --surface-overlay: rgba(12, 22, 34, 0.92);
+  --border: rgba(163, 196, 224, 0.12);
+  --border-strong: rgba(163, 196, 224, 0.22);
+
+  /* --- text --- */
+  --text: #eef4f9;
+  --text-muted: #8ea0b3;
+  --text-faint: #5c6f82;
+
+  /* --- brand / accent --- */
+  --accent: #5fd3e8;
+  --accent-strong: #8be7f5;
+
+  /* --- dimension colors (6, evenly spread around the hue wheel) --- */
+  --dim-demand: #f38a67;
+  --dim-events: #e8c26a;
+  --dim-environment: #7bcf9e;
+  --dim-capacity: #5fd3e8;
+  --dim-economic: #a794f2;
+  --dim-risk: #f0637f;
+
+  /* --- semantic status --- */
+  --status-good: #7bcf9e;
+  --status-warn: #e8c26a;
+  --status-bad: #f0637f;
+
+  /* --- AI narrative accent (distinct from the deterministic UI, per
+     responsible-AI labeling practice) --- */
+  --ai-accent: #a794f2;
+  --ai-accent-soft: rgba(167, 148, 242, 0.1);
+
+  /* --- type --- */
+  --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+
+  /* --- spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* --- radii / elevation --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 20px 48px rgba(0, 0, 0, 0.28);
+  --shadow-overlay: 0 32px 64px rgba(0, 0, 0, 0.5);
+}

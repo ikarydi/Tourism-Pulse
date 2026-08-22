@@ -1,0 +1,348 @@
+.map-wrap {
+  margin-top: var(--space-2);
+}
+
+.map-viewport {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+.map-frame {
+  position: relative;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.europe-map {
+  height: calc(100vh - 260px);
+  min-height: 480px;
+  width: 100%;
+  background: #050a10;
+}
+
+.europe-map .leaflet-tile-pane {
+  filter: brightness(1.55) contrast(0.92);
+}
+
+.map-footnote {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: 11px;
+  max-width: 760px;
+  line-height: 1.6;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 900;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 10px 18px;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.map-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.map-info-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 900;
+  width: min(340px, calc(100% - 40px));
+  background: var(--surface-overlay);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px 24px;
+  box-shadow: var(--shadow-overlay);
+  animation: map-panel-in 0.22s ease;
+}
+
+@keyframes map-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.map-info-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.map-info-close:hover {
+  color: var(--text);
+}
+
+.map-info-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.map-info-heading h3 {
+  margin: 0;
+  font-size: 20px;
+  padding-right: 20px;
+}
+
+.map-info-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 20px;
+}
+
+.map-info-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 18px;
+  line-height: 1.5;
+}
+
+.map-info-score-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.map-info-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.map-info-score strong {
+  font-family: var(--font-display);
+  font-size: 38px;
+  color: var(--text);
+  letter-spacing: -0.04em;
+  line-height: 0.85;
+}
+
+.map-info-trend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  color: var(--status-warn);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.map-info-trend .trend-symbol {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.map-info-trend.up {
+  color: var(--status-good);
+}
+
+.map-info-trend.down {
+  color: var(--status-bad);
+}
+
+.map-info-confidence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.map-info-confidence strong {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--text);
+}
+
+.map-info-confidence span {
+  color: var(--text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.map-info-dimensions {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-info-dimension {
+  display: grid;
+  grid-template-columns: 40px 1fr 26px;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.map-info-dimension .dimension-row-track {
+  height: 4px;
+}
+
+.map-info-dimension strong {
+  color: var(--text);
+  text-align: right;
+  font-weight: 600;
+}
+
+.map-info-detail-link {
+  margin-top: 22px;
+  width: 100%;
+  background: var(--accent);
+  color: #051012;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.map-info-detail-link:hover {
+  background: var(--accent-strong);
+}
+
+.map-trending-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 900;
+  width: 300px;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px 20px;
+  box-shadow: var(--shadow-overlay);
+}
+
+.map-trending-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 6px;
+}
+
+.map-trending-columns ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.map-trending-columns li {
+  margin-top: 2px;
+}
+
+.map-trending-columns button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  color: var(--text);
+  font-size: 11px;
+  text-align: left;
+}
+
+.map-trending-columns button:hover {
+  color: var(--accent);
+}
+
+.map-trending-columns button strong {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.map-trending-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--status-good);
+}
+
+.map-trending-dot.down {
+  background: var(--status-bad);
+}
+
+.map-trending-empty {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+@media (max-width: 900px) {
+  .map-trending-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .map-info-panel {
+    left: 12px;
+    top: 12px;
+    width: calc(100% - 24px);
+  }
+
+  .map-legend {
+    left: 12px;
+    bottom: 12px;
+    gap: 10px;
+    padding: 8px 14px;
+  }
+}

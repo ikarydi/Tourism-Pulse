@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import { CircleMarker, MapContainer, TileLayer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { getPlacePulseSummary, type Place, type Pulse } from './api'
-import { dimensions, formatChange, scoreStatus } from './format'
+import { getPlacePulseSummary } from '../../api/pulse'
+import { DIMENSIONS } from '../../lib/dimensions'
+import { formatChange, scoreStatus } from '../../lib/format'
+import type { Place } from '../../types/place'
+import type { Pulse } from '../../types/pulse'
+import './EuropeMap.css'
 
 // Centered/zoomed to frame continental Europe at a glance.
 const EUROPE_CENTER: [number, number] = [54, 15]
@@ -14,15 +18,15 @@ function isLocated(place: Place): place is LocatedPlace {
   return typeof place.latitude === 'number' && typeof place.longitude === 'number'
 }
 
-// Colors follow the same trend semantics as the Detail view's trend
-// icon/label (App.css .trend-icon.down/.stable) - green/coral/amber - so a
-// user who has seen one recognizes the other. CSS custom properties
-// resolve fine when assigned via Leaflet's inline path styles.
+// Colors follow the same trend semantics used everywhere else in the app
+// (status-good/status-bad/status-warn), so a user who has seen one
+// recognizes the other. CSS custom properties resolve fine when assigned
+// via Leaflet's inline path styles.
 function trendColor(pulse: Pulse | null | undefined): string {
-  if (!pulse) return 'var(--muted)'
-  if (pulse.trend.direction === 'up') return 'var(--green)'
-  if (pulse.trend.direction === 'down') return 'var(--coral)'
-  return 'var(--amber)'
+  if (!pulse) return 'var(--text-faint)'
+  if (pulse.trend.direction === 'up') return 'var(--status-good)'
+  if (pulse.trend.direction === 'down') return 'var(--status-bad)'
+  return 'var(--status-warn)'
 }
 
 function trendArrow(pulse: Pulse | null | undefined): string {
@@ -42,7 +46,13 @@ function markerRadius(pulse: Pulse | null | undefined, isCountry: boolean): numb
   return base + (Math.max(0, Math.min(100, pulse.pulse)) / 100) * boost
 }
 
-function MapInfoPanel({ place, pulse, loading, onClose, onJumpToDetail }: {
+function MapInfoPanel({
+  place,
+  pulse,
+  loading,
+  onClose,
+  onJumpToDetail,
+}: {
   place: Place
   pulse: Pulse | null
   loading: boolean
@@ -51,20 +61,31 @@ function MapInfoPanel({ place, pulse, loading, onClose, onJumpToDetail }: {
 }) {
   return (
     <div className="map-info-panel">
-      <button type="button" className="map-info-close" onClick={onClose} aria-label="Close">×</button>
-      <p className="eyebrow">SELECTED DESTINATION</p>
+      <button type="button" className="map-info-close" onClick={onClose} aria-label="Close">
+        ×
+      </button>
+      <p className="eyebrow">Selected destination</p>
       <div className="map-info-heading">
         <h3>{place.name}</h3>
-        <span className={`scope-badge ${place.place_type === 'country' ? 'national' : 'city'}`}>{place.place_type === 'country' ? 'National' : 'City'}</span>
+        <span className={`scope-badge ${place.place_type === 'country' ? 'national' : 'city'}`}>
+          {place.place_type === 'country' ? 'National' : 'City'}
+        </span>
       </div>
-      {loading && <div className="map-info-loading"><span className="spinner" />Loading pulse...</div>}
+      {loading && (
+        <div className="map-info-loading">
+          <span className="spinner" />
+          Loading pulse...
+        </div>
+      )}
       {!loading && !pulse && <p className="map-info-empty">No pulse data available for this destination yet.</p>}
       {!loading && pulse && (
         <>
           <div className="map-info-score-row">
             <div className="map-info-score">
               <strong>{Math.round(pulse.pulse)}</strong>
-              <span className={`status-pill ${scoreStatus(pulse.pulse).toLowerCase()}`}>{scoreStatus(pulse.pulse)}</span>
+              <span className={`badge badge-${scoreStatus(pulse.pulse) === 'Strong' ? 'good' : scoreStatus(pulse.pulse) === 'Moderate' ? 'warn' : 'bad'}`}>
+                {scoreStatus(pulse.pulse)}
+              </span>
             </div>
             <div className={`map-info-trend ${pulse.trend.direction}`}>
               <span className="trend-symbol">{trendArrow(pulse)}</span>
@@ -76,18 +97,25 @@ function MapInfoPanel({ place, pulse, loading, onClose, onJumpToDetail }: {
             </div>
           </div>
           <div className="map-info-dimensions">
-            {dimensions.map((dimension) => {
+            {DIMENSIONS.map((dimension) => {
               const value = pulse.dimensions[dimension.key]
               return (
                 <div className="map-info-dimension" key={dimension.key}>
-                  <span>{dimension.label}</span>
-                  <div className="dimension-track"><span className={dimension.tone} style={{ width: `${value}%` }} /></div>
+                  <span>{dimension.short}</span>
+                  <div className="dimension-row-track">
+                    <span
+                      className="dimension-row-fill"
+                      style={{ width: `${value}%`, background: dimension.color }}
+                    />
+                  </div>
                   <strong>{value === 0 ? '—' : Math.round(value)}</strong>
                 </div>
               )
             })}
           </div>
-          <button type="button" className="map-info-detail-link" onClick={onJumpToDetail}>Full detail below &darr;</button>
+          <button type="button" className="map-info-detail-link" onClick={onJumpToDetail}>
+            Full detail below &darr;
+          </button>
         </>
       )}
     </div>
@@ -101,13 +129,19 @@ function TrendingPanel({ movers, onSelect }: { movers: { up: Mover[]; down: Move
 
   return (
     <div className="map-trending-panel">
-      <p className="eyebrow">TRENDING NOW</p>
+      <p className="eyebrow">Trending now</p>
       <div className="map-trending-columns">
         <div>
           <p className="mini-label positive">Rising</p>
           <ul>
             {movers.up.map(({ place, pulse }) => (
-              <li key={place.id}><button type="button" onClick={() => onSelect(place.id)}><span className="map-trending-dot up" />{place.name}<strong>{formatChange(pulse.trend.change)}</strong></button></li>
+              <li key={place.id}>
+                <button type="button" onClick={() => onSelect(place.id)}>
+                  <span className="map-trending-dot up" />
+                  {place.name}
+                  <strong>{formatChange(pulse.trend.change)}</strong>
+                </button>
+              </li>
             ))}
             {!movers.up.length && <li className="map-trending-empty">No risers right now.</li>}
           </ul>
@@ -116,7 +150,13 @@ function TrendingPanel({ movers, onSelect }: { movers: { up: Mover[]; down: Move
           <p className="mini-label caution">Falling</p>
           <ul>
             {movers.down.map(({ place, pulse }) => (
-              <li key={place.id}><button type="button" onClick={() => onSelect(place.id)}><span className="map-trending-dot down" />{place.name}<strong>{formatChange(pulse.trend.change)}</strong></button></li>
+              <li key={place.id}>
+                <button type="button" onClick={() => onSelect(place.id)}>
+                  <span className="map-trending-dot down" />
+                  {place.name}
+                  <strong>{formatChange(pulse.trend.change)}</strong>
+                </button>
+              </li>
             ))}
             {!movers.down.length && <li className="map-trending-empty">No fallers right now.</li>}
           </ul>
@@ -126,7 +166,11 @@ function TrendingPanel({ movers, onSelect }: { movers: { up: Mover[]; down: Move
   )
 }
 
-export function EuropeMap({ places, onSelectPlace, onJumpToDetail }: {
+export function EuropeMap({
+  places,
+  onSelectPlace,
+  onJumpToDetail,
+}: {
   places: Place[]
   onSelectPlace: (placeId: number) => void
   onJumpToDetail: () => void
@@ -162,7 +206,9 @@ export function EuropeMap({ places, onSelectPlace, onJumpToDetail }: {
 
     void loadPulses()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
     // Depends on `places` (the real input), not the `located` array derived
     // from it each render - `located` is recomputed fresh from `places` on
     // every run of this effect, so there's no stale-closure risk here.
@@ -191,12 +237,26 @@ export function EuropeMap({ places, onSelectPlace, onJumpToDetail }: {
               onJumpToDetail={onJumpToDetail}
             />
           )}
-          <TrendingPanel movers={{ up: risers, down: fallers }} onSelect={(placeId) => { setSelectedId(placeId); onSelectPlace(placeId) }} />
+          <TrendingPanel
+            movers={{ up: risers, down: fallers }}
+            onSelect={(placeId) => {
+              setSelectedId(placeId)
+              onSelectPlace(placeId)
+            }}
+          />
           <div className="map-legend">
-            <span><i style={{ background: 'var(--green)' }} /> Trending up</span>
-            <span><i style={{ background: 'var(--coral)' }} /> Trending down</span>
-            <span><i style={{ background: 'var(--amber)' }} /> Stable</span>
-            <span><i style={{ background: 'var(--muted)' }} /> No data yet</span>
+            <span>
+              <i style={{ background: 'var(--status-good)' }} /> Trending up
+            </span>
+            <span>
+              <i style={{ background: 'var(--status-bad)' }} /> Trending down
+            </span>
+            <span>
+              <i style={{ background: 'var(--status-warn)' }} /> Stable
+            </span>
+            <span>
+              <i style={{ background: 'var(--text-faint)' }} /> No data yet
+            </span>
           </div>
           <MapContainer center={EUROPE_CENTER} zoom={EUROPE_ZOOM} scrollWheelZoom className="europe-map">
             {/* CARTO's free "Dark Matter" basemap, no-labels variant - a
@@ -228,12 +288,17 @@ export function EuropeMap({ places, onSelectPlace, onJumpToDetail }: {
                     // dot regardless of what's underneath (dark land vs.
                     // darker water), rather than a flat blob that can blend
                     // into the basemap.
-                    color: place.id === selectedId ? 'var(--bright)' : 'rgba(243, 247, 250, .55)',
+                    color: place.id === selectedId ? 'var(--text)' : 'rgba(238, 244, 249, .55)',
                     fillColor: trendColor(pulse),
                     fillOpacity: place.id === selectedId ? 0.95 : 0.8,
                     weight: place.id === selectedId ? 2.5 : 1.5,
                   }}
-                  eventHandlers={{ click: () => { setSelectedId(place.id); onSelectPlace(place.id) } }}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedId(place.id)
+                      onSelectPlace(place.id)
+                    },
+                  }}
                 />
               )
             })}
@@ -242,7 +307,8 @@ export function EuropeMap({ places, onSelectPlace, onJumpToDetail }: {
       </div>
       {unlocated > 0 && (
         <p className="map-footnote">
-          {unlocated} destination{unlocated === 1 ? '' : 's'} not yet located on the map. Marker size reflects pulse strength, color reflects trend direction.
+          {unlocated} destination{unlocated === 1 ? '' : 's'} not yet located on the map. Marker size reflects pulse
+          strength, color reflects trend direction.
         </p>
       )}
     </div>
