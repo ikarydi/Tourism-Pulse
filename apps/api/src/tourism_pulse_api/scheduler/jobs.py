@@ -195,6 +195,14 @@ def build_argv_ksh_capacity(db: Session) -> list[list[str]]:
 
 _EUROSTAT_METRICS = ["nights", "arrivals", "occupancy_rate", "capacity", "economic", "population"]
 
+# Eurostat's own geo codes disagree with ISO 3166-1 alpha-2 for a couple
+# of countries (documented in ingestion.eurostat.__main__'s --geo help
+# text, but that's only read by someone invoking the CLI directly - this
+# scheduler job builds --geo from Destination.country_code and needs the
+# same remapping, or it silently gets zero rows back every month for
+# whichever of these it hits).
+_ISO_TO_EUROSTAT_GEO = {"GR": "EL", "GB": "UK"}
+
 
 def build_argv_eurostat(db: Session) -> list[list[str]]:
     argv = []
@@ -202,11 +210,12 @@ def build_argv_eurostat(db: Session) -> list[list[str]]:
         country_code = place.destination.country_code
         if not country_code:
             continue
+        geo = _ISO_TO_EUROSTAT_GEO.get(country_code, country_code)
         for metric in _EUROSTAT_METRICS:
             argv.append(
                 [
                     "--place-id", str(place.id),
-                    "--geo", country_code,
+                    "--geo", geo,
                     "--metric", metric,
                     "--backfill",
                 ]

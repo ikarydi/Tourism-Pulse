@@ -8,6 +8,7 @@ import pytest
 from tourism_pulse_api.db.models import Destination, Place
 from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.scheduler.jobs import (
+    build_argv_eurostat,
     build_argv_events,
     build_argv_gdacs,
     build_argv_gdelt,
@@ -58,6 +59,24 @@ def budapest(db_session, hungary) -> Place:
 @pytest.fixture()
 def hungary_country_place(db_session, hungary) -> Place:
     place = Place(destination_id=hungary.id, name="Hungary", place_type="country")
+    db_session.add(place)
+    db_session.commit()
+    db_session.refresh(place)
+    return place
+
+
+@pytest.fixture()
+def greece(db_session) -> Destination:
+    destination = Destination(country_code="GR", name="Scheduler Test Greece")
+    db_session.add(destination)
+    db_session.commit()
+    db_session.refresh(destination)
+    return destination
+
+
+@pytest.fixture()
+def greece_country_place(db_session, greece) -> Place:
+    place = Place(destination_id=greece.id, name="Greece", place_type="country")
     db_session.add(place)
     db_session.commit()
     db_session.refresh(place)
@@ -193,3 +212,29 @@ def test_ksh_capacity_picks_at_most_one_job(db_session, hungary_country_place) -
     argv_list = build_argv_ksh_capacity(db_session)
 
     assert len(argv_list) <= 1
+
+
+# --- Eurostat: country-level places, every metric ----------------------------
+
+
+def test_eurostat_uses_the_destination_country_code_as_geo(
+    db_session, hungary_country_place
+) -> None:
+    argv_list = build_argv_eurostat(db_session)
+
+    matching = next(argv for argv in argv_list if str(hungary_country_place.id) in argv)
+    assert matching[matching.index("--geo") + 1] == "HU"
+
+
+def test_eurostat_remaps_greece_to_eurostats_own_geo_code(
+    db_session, greece_country_place
+) -> None:
+    # Regression: Eurostat's own geo code for Greece is "EL", not the ISO
+    # 3166-1 "GR" stored on Destination.country_code - passing "GR"
+    # straight through silently returns zero rows every scheduled run.
+    argv_list = build_argv_eurostat(db_session)
+
+    matching_jobs = [argv for argv in argv_list if str(greece_country_place.id) in argv]
+    assert matching_jobs
+    for argv in matching_jobs:
+        assert argv[argv.index("--geo") + 1] == "EL"
