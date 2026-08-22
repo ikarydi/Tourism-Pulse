@@ -66,3 +66,11 @@ class Event(Base):
         String(255),
         nullable=True,
     )
+
+    # Lineage (spec section 15), mirroring Signal.source_observation_id -
+    # nullable since a manually-created event (no source/external_id
+    # either) has no raw fetch behind it to point at.
+    source_observation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("source_observations.id"),
+        nullable=True,
+    )

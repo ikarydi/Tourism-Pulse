@@ -161,14 +161,11 @@ def run(argv: list[str] | None = None) -> int:
             print(f"Place {args.place_id} not found.", file=sys.stderr)
             return 1
 
-        # Archived for the raw record (spec section 12), but not run
-        # through data_quality.pipeline.run_quality_checks or given
-        # lineage on the written rows the way Signal-writing adapters
-        # are: Event has no value/unit/observed_at the way Signal does,
-        # so the SignalCandidate-shaped gate doesn't apply to it as-is.
-        # Extending quality checks/lineage to Event rows is a natural
-        # future step, not built this round.
-        archive_raw_observation(
+        # Archived for the raw record (spec section 12) before the
+        # quality gate runs, same order every Signal-writing adapter
+        # uses - see events/service.py's module docstring for the gap
+        # this closes.
+        source_observation = archive_raw_observation(
             db,
             source_name=TICKETMASTER_SOURCE_NAME,
             dataset="ticketmaster_discovery_events",
@@ -183,17 +180,28 @@ def run(argv: list[str] | None = None) -> int:
             place_id=args.place_id,
             events=events,
             source_url=source_url,
+            source_observation_id=source_observation.id,
         )
 
-        created_count = sum(1 for _, created in results if created)
-        updated_count = len(results) - created_count
+        created_count = sum(1 for _, created, _ in results if created)
+        rejected_count = sum(1 for row, _, _ in results if row is None)
+        updated_count = len(results) - created_count - rejected_count
 
-        for event, created in results:
+        for row, created, gate in results:
+            if row is None:
+                reject_reasons = "; ".join(
+                    outcome.detail or outcome.check_name
+                    for outcome in gate.outcomes
+                    if not outcome.passed and outcome.severity == "reject"
+                )
+                print(f"[REJECTED] {reject_reasons}", file=sys.stderr)
+                continue
+
             action = "created" if created else "updated"
-            start = event.start_at.isoformat()
-            print(f"[INGESTED] id={event.id} ({action}): {event.name} @ {start}")
+            start = row.start_at.isoformat()
+            print(f"[INGESTED] id={row.id} ({action}): {row.name} @ {start}")
 
-        print(f"\n{created_count} created, {updated_count} updated.")
+        print(f"\n{created_count} created, {updated_count} updated, {rejected_count} rejected.")
     finally:
         db.close()
 

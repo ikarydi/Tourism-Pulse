@@ -1,8 +1,13 @@
 """Individual data-quality checks (spec section 14).
 
-Each check takes a `SignalCandidate` (plus a `Session`/`now` where it needs
-one) and returns a `QualityCheckOutcome`. `data_quality.pipeline` runs the
-full set and persists one `DataQualityResult` row per outcome.
+Each check takes a `QualityCheckable` (plus a `Session`/`now` where it
+needs one) and returns a `QualityCheckOutcome`. `data_quality.pipeline`
+runs the full set and persists one `DataQualityResult` row per outcome.
+`QualityCheckable` is a Protocol both `SignalCandidate` and
+`EventCandidate` satisfy - see data_quality.types for why the numeric-
+only checks below (missing_value/impossible_range/outlier/value-based
+duplicate) already no-op correctly for an Event candidate without any
+Event-specific branches here.
 
 Two spec-14 checks are deliberately not here: `check_source_failure` and
 `check_schema_change` are about one *fetch*, not one *candidate signal* -
@@ -13,11 +18,11 @@ adapter emits the kind of multi-field totals (e.g. domestic + international
 = total nights) that check would compare.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from tourism_pulse_api.data_quality.types import QualityCheckOutcome, SignalCandidate
+from tourism_pulse_api.data_quality.types import QualityCheckable, QualityCheckOutcome
 from tourism_pulse_api.db.models.signal import Signal
 
 # (min, max) per signal_type; max=None means "no upper bound, just >= min".
@@ -110,14 +115,20 @@ _MIN_OUTLIER_HISTORY = 3
 _OUTLIER_Z_SCORE_THRESHOLD = 3.0
 
 _EARLIEST_PLAUSIBLE_OBSERVED_AT = datetime(1900, 1, 1, tzinfo=UTC)
-_MAX_FUTURE_SKEW = timedelta(hours=1)
 
 
 def _pass(check_name: str) -> QualityCheckOutcome:
     return QualityCheckOutcome(check_name=check_name, passed=True, severity="reject")
 
 
-def check_missing_value(candidate: SignalCandidate) -> QualityCheckOutcome:
+def check_missing_value(candidate: QualityCheckable) -> QualityCheckOutcome:
+    # has_value=False (EventCandidate) means "this candidate type never
+    # carries a scalar value" - structural, not a defect. Only a
+    # candidate type that's supposed to have one (has_value=True) can
+    # fail this check by having value=None.
+    if not candidate.has_value:
+        return _pass("missing_value")
+
     if candidate.value is None:
         return QualityCheckOutcome(
             check_name="missing_value",
@@ -129,7 +140,7 @@ def check_missing_value(candidate: SignalCandidate) -> QualityCheckOutcome:
     return _pass("missing_value")
 
 
-def check_invalid_unit(candidate: SignalCandidate) -> QualityCheckOutcome:
+def check_invalid_unit(candidate: QualityCheckable) -> QualityCheckOutcome:
     # unit is legitimately nullable on Signal itself (not every signal
     # needs one) - only an empty/whitespace string, which usually means a
     # caller passed "" rather than omitting the field, is flagged.
@@ -145,51 +156,51 @@ def check_invalid_unit(candidate: SignalCandidate) -> QualityCheckOutcome:
 
 
 def check_invalid_date(
-    candidate: SignalCandidate,
+    candidate: QualityCheckable,
     *,
     now: datetime | None = None,
 ) -> QualityCheckOutcome:
-    if candidate.observed_at is None:
+    if candidate.recorded_at is None:
         return QualityCheckOutcome(
             check_name="invalid_date",
             passed=False,
             severity="reject",
-            detail="observed_at is missing",
+            detail="recorded_at is missing",
         )
 
-    observed_at = candidate.observed_at
-    if observed_at.tzinfo is None:
-        observed_at = observed_at.replace(tzinfo=UTC)
+    recorded_at = candidate.recorded_at
+    if recorded_at.tzinfo is None:
+        recorded_at = recorded_at.replace(tzinfo=UTC)
 
     reference_now = now or datetime.now(UTC)
     if reference_now.tzinfo is None:
         reference_now = reference_now.replace(tzinfo=UTC)
 
-    if observed_at > reference_now + _MAX_FUTURE_SKEW:
+    if recorded_at > reference_now + candidate.max_future_skew:
         return QualityCheckOutcome(
             check_name="invalid_date",
             passed=False,
             severity="reject",
-            detail=f"observed_at {observed_at.isoformat()} is in the future",
+            detail=f"recorded_at {recorded_at.isoformat()} is too far in the future",
         )
 
-    if observed_at < _EARLIEST_PLAUSIBLE_OBSERVED_AT:
+    if recorded_at < _EARLIEST_PLAUSIBLE_OBSERVED_AT:
         return QualityCheckOutcome(
             check_name="invalid_date",
             passed=False,
             severity="reject",
-            detail=f"observed_at {observed_at.isoformat()} is implausibly old",
+            detail=f"recorded_at {recorded_at.isoformat()} is implausibly old",
         )
 
     return _pass("invalid_date")
 
 
-def check_impossible_range(candidate: SignalCandidate) -> QualityCheckOutcome:
+def check_impossible_range(candidate: QualityCheckable) -> QualityCheckOutcome:
     if candidate.value is None:
         # check_missing_value is the authoritative record of this defect.
         return _pass("impossible_range")
 
-    bounds = IMPOSSIBLE_RANGE_BOUNDS.get(candidate.signal_type.strip().lower())
+    bounds = IMPOSSIBLE_RANGE_BOUNDS.get(candidate.check_type.strip().lower())
     if bounds is None:
         return _pass("impossible_range")
 
@@ -208,16 +219,22 @@ def check_impossible_range(candidate: SignalCandidate) -> QualityCheckOutcome:
     return _pass("impossible_range")
 
 
-def check_duplicate(db: Session, candidate: SignalCandidate) -> QualityCheckOutcome:
-    if candidate.observed_at is None or candidate.value is None:
+def check_duplicate(db: Session, candidate: QualityCheckable) -> QualityCheckOutcome:
+    # Queries the Signal table specifically - a real Signal-only check
+    # (Event's natural key is source+external_id, not place+type+
+    # observed_at+source, and Event has no value to conflict over
+    # anyway). Already no-ops correctly for an Event candidate via this
+    # same guard, since EventCandidate.value is always None - see
+    # QualityCheckable's docstring.
+    if candidate.recorded_at is None or candidate.value is None:
         return _pass("duplicate")
 
     existing = (
         db.query(Signal)
         .filter(
             Signal.place_id == candidate.place_id,
-            Signal.signal_type == candidate.signal_type,
-            Signal.observed_at == candidate.observed_at,
+            Signal.signal_type == candidate.check_type,
+            Signal.observed_at == candidate.recorded_at,
             Signal.source == candidate.source,
         )
         .one_or_none()
@@ -242,7 +259,9 @@ def check_duplicate(db: Session, candidate: SignalCandidate) -> QualityCheckOutc
     return _pass("duplicate")
 
 
-def check_outlier(db: Session, candidate: SignalCandidate) -> QualityCheckOutcome:
+def check_outlier(db: Session, candidate: QualityCheckable) -> QualityCheckOutcome:
+    # Same Signal-only reasoning as check_duplicate above - already
+    # no-ops for an Event candidate (value is always None) via this guard.
     if candidate.value is None:
         return _pass("outlier")
 
@@ -251,7 +270,7 @@ def check_outlier(db: Session, candidate: SignalCandidate) -> QualityCheckOutcom
         for (value,) in db.query(Signal.value)
         .filter(
             Signal.place_id == candidate.place_id,
-            Signal.signal_type == candidate.signal_type,
+            Signal.signal_type == candidate.check_type,
         )
         .all()
     ]
@@ -276,7 +295,7 @@ def check_outlier(db: Session, candidate: SignalCandidate) -> QualityCheckOutcom
             detail=(
                 f"value {candidate.value} is {z_score:.1f} standard "
                 f"deviations from this place's history for "
-                f"{candidate.signal_type} (mean {mean:.2f})"
+                f"{candidate.check_type} (mean {mean:.2f})"
             ),
         )
 
@@ -284,25 +303,30 @@ def check_outlier(db: Session, candidate: SignalCandidate) -> QualityCheckOutcom
 
 
 def check_stale(
-    candidate: SignalCandidate,
+    candidate: QualityCheckable,
     *,
     now: datetime | None = None,
 ) -> QualityCheckOutcome:
-    if candidate.observed_at is None:
+    if candidate.recorded_at is None:
         # check_invalid_date is the authoritative record of this defect.
         return _pass("stale")
 
-    observed_at = candidate.observed_at
-    if observed_at.tzinfo is None:
-        observed_at = observed_at.replace(tzinfo=UTC)
+    recorded_at = candidate.recorded_at
+    if recorded_at.tzinfo is None:
+        recorded_at = recorded_at.replace(tzinfo=UTC)
 
     reference_now = now or datetime.now(UTC)
     if reference_now.tzinfo is None:
         reference_now = reference_now.replace(tzinfo=UTC)
 
-    age_days = (reference_now - observed_at).days
+    # For an Event candidate, recorded_at is start_at - usually still in
+    # the future, giving a negative age that never trips this check
+    # (correctly: an upcoming event isn't "stale"). A past event past
+    # the threshold still warns, which is a reasonable heads-up, not a
+    # defect worth special-casing away.
+    age_days = (reference_now - recorded_at).days
     threshold = STALE_THRESHOLD_DAYS.get(
-        candidate.signal_type.strip().lower(),
+        candidate.check_type.strip().lower(),
         DEFAULT_STALE_THRESHOLD_DAYS,
     )
 

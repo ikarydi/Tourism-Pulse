@@ -1,4 +1,8 @@
-"""Runs the full per-candidate quality gate and persists its outcomes."""
+"""Runs the full per-candidate quality gate and persists its outcomes.
+
+Accepts any `QualityCheckable` - a `SignalCandidate` or an
+`EventCandidate` (see data_quality.types) alike.
+"""
 
 from datetime import UTC, datetime
 
@@ -13,13 +17,13 @@ from tourism_pulse_api.data_quality.checks import (
     check_outlier,
     check_stale,
 )
-from tourism_pulse_api.data_quality.types import QualityGateResult, SignalCandidate
+from tourism_pulse_api.data_quality.types import QualityCheckable, QualityGateResult
 from tourism_pulse_api.db.models.data_quality_result import DataQualityResult
 
 
 def run_quality_checks(
     db: Session,
-    candidate: SignalCandidate,
+    candidate: QualityCheckable,
     *,
     now: datetime | None = None,
 ) -> QualityGateResult:
@@ -51,7 +55,7 @@ def run_quality_checks(
             DataQualityResult(
                 source_observation_id=candidate.source_observation_id,
                 place_id=candidate.place_id,
-                signal_type=candidate.signal_type,
+                signal_type=candidate.check_type,
                 check_name=outcome.check_name,
                 passed=outcome.passed,
                 severity=outcome.severity,
