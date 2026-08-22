@@ -11,10 +11,14 @@ from tourism_pulse_api.ingestion.eurostat.parser import (
     ARRIVALS_BASE_URL,
     CAPACITY_BASE_URL,
     CAPACITY_FIXED_PARAMS,
+    ECONOMIC_BASE_URL,
+    ECONOMIC_FIXED_PARAMS,
     EUROSTAT_FIXED_PARAMS,
     NIGHTS_BASE_URL,
     OCCUPANCY_BASE_URL,
     OCCUPANCY_FIXED_PARAMS,
+    POPULATION_BASE_URL,
+    POPULATION_FIXED_PARAMS,
 )
 
 DEFAULT_TIMEOUT_SECONDS = 20.0
@@ -82,6 +86,24 @@ def build_capacity_request_url(*, geo: str, since_time_period: str | None = None
     )
 
 
+def build_population_request_url(*, geo: str, since_time_period: str | None = None) -> str:
+    return _build_url(
+        base_url=POPULATION_BASE_URL,
+        geo=geo,
+        fixed_params=POPULATION_FIXED_PARAMS,
+        since_time_period=since_time_period,
+    )
+
+
+def build_economic_request_url(*, geo: str, since_time_period: str | None = None) -> str:
+    return _build_url(
+        base_url=ECONOMIC_BASE_URL,
+        geo=geo,
+        fixed_params=ECONOMIC_FIXED_PARAMS,
+        since_time_period=since_time_period,
+    )
+
+
 def _fetch(url: str, *, timeout: float) -> str:
     request = urllib.request.Request(
         url,
@@ -139,4 +161,27 @@ def fetch_capacity(
 ) -> str:
     """Fetch annual bed-place capacity for a Eurostat geo code and return raw JSON text."""
     url = build_capacity_request_url(geo=geo, since_time_period=since_time_period)
+    return _fetch(url, timeout=timeout)
+
+
+def fetch_population(
+    *,
+    geo: str,
+    since_time_period: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> str:
+    """Fetch annual population for a Eurostat geo code and return raw JSON text."""
+    url = build_population_request_url(geo=geo, since_time_period=since_time_period)
+    return _fetch(url, timeout=timeout)
+
+
+def fetch_turnover_growth(
+    *,
+    geo: str,
+    since_time_period: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> str:
+    """Fetch annual accommodation-sector turnover growth for a Eurostat geo
+    code and return raw JSON text."""
+    url = build_economic_request_url(geo=geo, since_time_period=since_time_period)
     return _fetch(url, timeout=timeout)

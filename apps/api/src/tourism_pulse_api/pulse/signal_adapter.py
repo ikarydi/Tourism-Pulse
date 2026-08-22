@@ -42,6 +42,13 @@ DIMENSION_MAP: dict[str, str] = {
     # source category alongside weather_comfort. See pulse.air_quality
     # for its (inverted-polarity) normalizer.
     "air_quality_pm25": "environment",
+    # Eurostat accommodation-sector (NACE I55) net turnover growth - the
+    # first signal to feed the `economic` dimension.
+    "tourism_turnover_growth": "economic",
+    # Derived: tourism_nights ÷ population (see ingestion.eurostat.service).
+    # A second, independent capacity-style signal alongside
+    # accommodation_capacity/accommodation_capacity_annual.
+    "visitor_pressure": "capacity",
 }
 
 

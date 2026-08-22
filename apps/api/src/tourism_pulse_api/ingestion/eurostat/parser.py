@@ -82,6 +82,21 @@ CAPACITY_DATASET = "tour_cap_nat"
 CAPACITY_UNIT = "bed_places"
 CAPACITY_BASE_URL = f"{EUROSTAT_API_BASE}/{CAPACITY_DATASET}"
 
+# Population on 1 January, by country - reference data (see
+# db/models/place_demographics.py), not a Signal. Annual, same
+# single-value-per-non-time-dimension shape as capacity, so it reuses
+# `_parse_annual_country_series` unchanged.
+POPULATION_DATASET = "demo_pjan"
+POPULATION_UNIT = "people"
+POPULATION_BASE_URL = f"{EUROSTAT_API_BASE}/{POPULATION_DATASET}"
+
+# Tourism-sector (NACE I55 - accommodation) net turnover, year-over-year
+# percentage change, calendar-adjusted. Annual, same shape as capacity/
+# population.
+ECONOMIC_DATASET = "sts_setu_a"
+ECONOMIC_UNIT = "percent_yoy"
+ECONOMIC_BASE_URL = f"{EUROSTAT_API_BASE}/{ECONOMIC_DATASET}"
+
 # Fixed query dimensions for nights/arrivals (besides geo/time, which vary):
 # monthly frequency, both residents and non-residents combined, raw count
 # (not an index), and "hotels; holiday and other short-stay accommodation;
@@ -108,6 +123,31 @@ CAPACITY_FIXED_PARAMS: dict[str, str] = {
     "unit": "NR",
     "accomunit": "BEDPL",
     "nace_r2": "I551-I553",
+}
+
+# Fixed query dimensions for population: total (all ages, both sexes), raw
+# count. Verified live: demo_pjan's dims are freq/unit/age/sex/geo/time.
+POPULATION_FIXED_PARAMS: dict[str, str] = {
+    "freq": "A",
+    "unit": "NR",
+    "age": "TOTAL",
+    "sex": "T",
+}
+
+# Fixed query dimensions for the economic (turnover growth) metric:
+# accommodation sector (I55, matching EUROSTAT_FIXED_PARAMS' "I551-I553"
+# scope in spirit), net turnover, year-over-year % change,
+# calendar-adjusted. Verified live against sts_setu_a - unlike the
+# other three metrics, HU itself has no published values for this
+# combination (a genuine Eurostat data gap, not a query error - other
+# countries like AT do), same "skip, don't invent" handling as any
+# other unpublished period.
+ECONOMIC_FIXED_PARAMS: dict[str, str] = {
+    "freq": "A",
+    "indic_bt": "NETTUR",
+    "nace_r2": "I55",
+    "s_adj": "CA",
+    "unit": "PCH_SM",
 }
 
 
@@ -340,6 +380,25 @@ def parse_eurostat_arrivals(text: str) -> list[EurostatObservation]:
 def parse_eurostat_occupancy_rate(text: str) -> list[EurostatObservation]:
     """Parse a Eurostat `tour_occ_mnor` (net bed-place occupancy rate) JSON-stat response."""
     return _parse_monthly_country_series(text, unit=OCCUPANCY_UNIT)
+
+
+def parse_eurostat_population(text: str) -> list[EurostatObservation]:
+    """Parse a Eurostat `demo_pjan` (population on 1 January) JSON-stat
+    response.
+
+    Annual, not monthly - see `_parse_annual_country_series`. Reference
+    data, not a Signal - see db/models/place_demographics.py.
+    """
+    return _parse_annual_country_series(text, unit=POPULATION_UNIT)
+
+
+def parse_eurostat_turnover_growth(text: str) -> list[EurostatObservation]:
+    """Parse a Eurostat `sts_setu_a` (accommodation-sector net turnover,
+    year-over-year % change) JSON-stat response.
+
+    Annual - see `_parse_annual_country_series`.
+    """
+    return _parse_annual_country_series(text, unit=ECONOMIC_UNIT)
 
 
 def latest_observation(observations: list[EurostatObservation]) -> EurostatObservation | None:

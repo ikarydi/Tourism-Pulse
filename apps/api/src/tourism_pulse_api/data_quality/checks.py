@@ -46,6 +46,11 @@ IMPOSSIBLE_RANGE_BOUNDS: dict[str, tuple[float, float | None]] = {
     # PM2.5 concentration, µg/m3 - a generous ceiling above even extreme
     # wildfire-smoke episodes.
     "air_quality_pm25": (0.0, 1000.0),
+    # Year-over-year % change - can be negative (a shrinking sector); a
+    # generous +/-500% ceiling well beyond any plausible real swing.
+    "tourism_turnover_growth": (-500.0, 500.0),
+    # Nights-per-resident ratio - always >= 0, no natural upper bound.
+    "visitor_pressure": (0.0, None),
     "news_mentions": (0.0, None),
     # GDELT's documented theoretical tone range.
     "news_sentiment": (-100.0, 100.0),
@@ -80,6 +85,9 @@ STALE_THRESHOLD_DAYS: dict[str, int] = {
     "disaster_alert_severity": 1,
     # Same cadence tier as weather - air quality changes fast.
     "air_quality_pm25": 2,
+    # Annual figures, same tier as accommodation_capacity_annual.
+    "tourism_turnover_growth": 400,
+    "visitor_pressure": 60,
 }
 DEFAULT_STALE_THRESHOLD_DAYS = 30
 

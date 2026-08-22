@@ -3,6 +3,7 @@ from tourism_pulse_api.db.models.data_quality_result import DataQualityResult
 from tourism_pulse_api.db.models.destination import Destination
 from tourism_pulse_api.db.models.event import Event
 from tourism_pulse_api.db.models.place import Place
+from tourism_pulse_api.db.models.place_demographics import PlaceDemographics
 from tourism_pulse_api.db.models.pulse_snapshot import PulseSnapshot
 from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.db.models.source import Source
@@ -14,6 +15,7 @@ __all__ = [
     "Destination",
     "Event",
     "Place",
+    "PlaceDemographics",
     "PulseSnapshot",
     "Signal",
     "Source",

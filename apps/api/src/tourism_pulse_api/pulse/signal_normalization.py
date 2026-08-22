@@ -3,6 +3,7 @@ from collections.abc import Callable
 from tourism_pulse_api.pulse.air_quality import normalize_pm25
 from tourism_pulse_api.pulse.airport_traffic import normalize_airport_traffic
 from tourism_pulse_api.pulse.disaster_risk import normalize_disaster_alert_severity
+from tourism_pulse_api.pulse.economic_growth import normalize_turnover_growth
 from tourism_pulse_api.pulse.news_mentions import normalize_news_mentions
 from tourism_pulse_api.pulse.news_sentiment import normalize_news_tone
 from tourism_pulse_api.pulse.normalization import (
@@ -14,6 +15,7 @@ from tourism_pulse_api.pulse.poi_density import (
     normalize_restaurant_count,
 )
 from tourism_pulse_api.pulse.search_interest import normalize_search_interest
+from tourism_pulse_api.pulse.visitor_pressure import normalize_visitor_pressure
 from tourism_pulse_api.pulse.wikipedia_interest import normalize_wikipedia_pageviews
 
 Normalizer = Callable[[float], float]
@@ -43,6 +45,10 @@ SIGNAL_NORMALIZERS: dict[str, Normalizer] = {
     "disaster_alert_severity": normalize_disaster_alert_severity,
     # OpenAQ PM2.5 reading - see pulse.air_quality.
     "air_quality_pm25": normalize_pm25,
+    # Eurostat accommodation-sector turnover growth - see pulse.economic_growth.
+    "tourism_turnover_growth": normalize_turnover_growth,
+    # Derived tourism_nights / population ratio - see pulse.visitor_pressure.
+    "visitor_pressure": normalize_visitor_pressure,
 }
 
 
