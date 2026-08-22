@@ -39,6 +39,7 @@ IMPOSSIBLE_RANGE_BOUNDS: dict[str, tuple[float, float | None]] = {
     "hotel_count": (0.0, None),
     "restaurant_count": (0.0, None),
     "search_interest": (0.0, None),
+    "wikipedia_pageviews": (0.0, None),
     "news_mentions": (0.0, None),
     # GDELT's documented theoretical tone range.
     "news_sentiment": (-100.0, 100.0),
@@ -64,6 +65,7 @@ STALE_THRESHOLD_DAYS: dict[str, int] = {
     "tourist_arrivals": 60,
     "accommodation_capacity_annual": 400,
     "search_interest": 30,
+    "wikipedia_pageviews": 30,
     "news_mentions": 14,
     "news_sentiment": 14,
     "airport_traffic": 1,

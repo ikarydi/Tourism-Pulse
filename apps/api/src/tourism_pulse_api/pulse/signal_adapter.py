@@ -30,6 +30,10 @@ DIMENSION_MAP: dict[str, str] = {
     # for transport activity (spec 6.3's airport_arrivals in spirit, not
     # literally a per-period arrivals count - see pulse.airport_traffic).
     "airport_traffic": "demand",
+    # Wikipedia 30-day pageview total - a second, independent attention
+    # signal alongside search_interest. See pulse.wikipedia_interest for
+    # why it's a distinct signal_type rather than reusing search_interest.
+    "wikipedia_pageviews": "demand",
 }
 
 

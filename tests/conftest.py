@@ -141,6 +141,7 @@ def _seed_sources(session_factory) -> None:
         {"name": "youtube", "category": "social", "reliability": "0.650"},
         {"name": "gdelt", "category": "news", "reliability": "0.850"},
         {"name": "opensky", "category": "social", "reliability": "0.650"},
+        {"name": "wikipedia", "category": "social", "reliability": "0.750"},
         {
             "name": "airbnb",
             "category": "commercial",
