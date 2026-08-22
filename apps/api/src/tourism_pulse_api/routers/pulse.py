@@ -294,6 +294,7 @@ def get_place_pulse_history(
             PulseSnapshot.calculated_at.desc(),
             PulseSnapshot.id.desc(),
         )
+        .limit(limit)
         .all()
     )
 

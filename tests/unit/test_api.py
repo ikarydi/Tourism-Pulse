@@ -338,6 +338,67 @@ def test_pulse_snapshot_is_persisted() -> None:
     assert history[0]["pulse"] == pulse_response.json()["pulse"]
 
 
+def test_pulse_history_limit_is_actually_applied() -> None:
+    # Regression test: the endpoint validates `limit` (422 outside 1-100)
+    # but used to build the query without ever calling `.limit()`, so it
+    # silently returned the place's entire history regardless of what was
+    # requested.
+    destination_response = client.post(
+        "/destinations",
+        json={
+            "country_code": "HU",
+            "name": "History Limit Test Destination",
+        },
+    )
+
+    assert destination_response.status_code == 201
+
+    destination_id = destination_response.json()["id"]
+
+    place_response = client.post(
+        f"/destinations/{destination_id}/places",
+        json={
+            "name": "History Limit Test Place",
+            "place_type": "destination",
+        },
+    )
+
+    assert place_response.status_code == 201
+
+    place_id = place_response.json()["id"]
+
+    signal_response = client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "occupancy",
+            "value": 80,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+    )
+
+    assert signal_response.status_code == 201
+
+    # Three persist=true calls -> three distinct snapshot rows.
+    for _ in range(3):
+        pulse_response = client.get(f"/places/{place_id}/pulse")
+        assert pulse_response.status_code == 200
+
+    full_history = client.get(f"/places/{place_id}/pulse/history").json()
+    assert len(full_history) == 3
+
+    limited_history = client.get(
+        f"/places/{place_id}/pulse/history",
+        params={"limit": 2},
+    ).json()
+
+    assert len(limited_history) == 2
+    # Most-recent-first ordering (id.desc()) means the limited response
+    # must be exactly the newest two of the three snapshots.
+    assert [row["id"] for row in limited_history] == [row["id"] for row in full_history[:2]]
+
+
 def test_pulse_persist_false_does_not_write_a_snapshot() -> None:
     destination_response = client.post(
         "/destinations",
