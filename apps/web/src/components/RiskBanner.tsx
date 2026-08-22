@@ -15,11 +15,21 @@ export function RiskBanner({
   riskValue: number
   evidence: DimensionEvidence | undefined
 }) {
-  if (riskValue >= ELEVATED_RISK_THRESHOLD) return null
-
   const alertSignal = evidence?.contributing_signals.find(
     (signal) => signal.signal_type === 'disaster_alert_severity',
   )
+
+  // A risk score of 0 means one of two very different things: a real
+  // GDACS reading that happens to be severe (elevated danger - worth a
+  // banner), or simply no disaster data ingested for this place at all
+  // (missing data, same as every other dimension defaulting to 0 with
+  // nothing to show) - DimensionList already renders that second case as
+  // "-", not "0". Gating on `alertSignal` (a real contributing signal)
+  // rather than the bare threshold is what tells the two apart; without
+  // it, most places with no GDACS coverage would show a false "elevated
+  // risk" alarm.
+  if (!alertSignal || riskValue >= ELEVATED_RISK_THRESHOLD) return null
+
   const topArticle = evidence?.related_articles[0]
 
   return (
@@ -28,9 +38,7 @@ export function RiskBanner({
       <div>
         <strong>Elevated risk signal</strong>
         <p>
-          {alertSignal
-            ? `GDACS alert score ${alertSignal.value} for this destination's country.`
-            : `Risk dimension reading is low (${Math.round(riskValue)}/100).`}
+          {`GDACS alert score ${alertSignal.value} for this destination's country.`}
           {topArticle && (
             <>
               {' '}

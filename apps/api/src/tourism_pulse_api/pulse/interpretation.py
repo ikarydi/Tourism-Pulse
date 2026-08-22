@@ -43,12 +43,17 @@ def interpret_pulse(
     else:
         data_quality = "complete"
 
+    # Thresholds match the frontend's scoreStatus() (lib/format.ts) so the
+    # headline's wording and the pulse score's own Weak/Moderate/Strong
+    # badge never disagree - this branch used to have no genuinely low
+    # tier at all, so a pulse of 0 was worded identically to a pulse of
+    # 40 ("Moderate tourism activity based on available data").
     if pulse.pulse >= 70:
         headline = "Strong tourism activity"
-    elif pulse.pulse >= 50:
+    elif pulse.pulse >= 40:
         headline = "Moderate tourism activity"
     else:
-        headline = "Moderate tourism activity based on available data"
+        headline = "Weak tourism activity"
 
     if missing_dimensions:
         headline += " with limited coverage"

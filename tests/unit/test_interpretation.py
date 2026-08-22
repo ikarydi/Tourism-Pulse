@@ -71,7 +71,14 @@ def test_missing_events_are_reported() -> None:
     [
         (75.0, "Strong tourism activity"),
         (60.0, "Moderate tourism activity"),
-        (40.0, "Moderate tourism activity based on available data"),
+        (40.0, "Moderate tourism activity"),
+        # Regression: pulse scores below 40 (the frontend's own Weak/
+        # Moderate/Strong cutoff - see lib/format.ts's scoreStatus())
+        # used to fall into the same "Moderate ... based on available
+        # data" wording as a pulse of 40, so a place shown with a "Weak"
+        # badge could carry a headline calling it moderate.
+        (20.0, "Weak tourism activity"),
+        (0.0, "Weak tourism activity"),
     ],
 )
 def test_headline_reflects_pulse_level(
