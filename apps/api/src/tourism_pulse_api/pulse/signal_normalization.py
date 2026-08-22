@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 from tourism_pulse_api.pulse.airport_traffic import normalize_airport_traffic
+from tourism_pulse_api.pulse.disaster_risk import normalize_disaster_alert_severity
 from tourism_pulse_api.pulse.news_mentions import normalize_news_mentions
 from tourism_pulse_api.pulse.news_sentiment import normalize_news_tone
 from tourism_pulse_api.pulse.normalization import (
@@ -37,6 +38,8 @@ SIGNAL_NORMALIZERS: dict[str, Normalizer] = {
     "airport_traffic": normalize_airport_traffic,
     # Wikipedia 30-day pageview total - see pulse.wikipedia_interest.
     "wikipedia_pageviews": normalize_wikipedia_pageviews,
+    # GDACS disaster-alert severity - see pulse.disaster_risk.
+    "disaster_alert_severity": normalize_disaster_alert_severity,
 }
 
 

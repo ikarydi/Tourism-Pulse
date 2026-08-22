@@ -1,0 +1,33 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "bbox": [11.878, 47.752, 11.878, 47.752],
+      "geometry": {"type": "Point", "coordinates": [11.878, 47.752]},
+      "properties": {
+        "eventtype": "DR",
+        "eventid": 1018332,
+        "eventname": "Europe-2026",
+        "alertlevel": "Orange",
+        "alertscore": 2,
+        "country": "Albania, Austria, Hungary",
+        "iscurrent": "true"
+      }
+    },
+    {
+      "type": "Feature",
+      "bbox": [19.04, 47.5, 19.04, 47.5],
+      "geometry": {"type": "Point", "coordinates": [19.04, 47.5]},
+      "properties": {
+        "eventtype": "FL",
+        "eventid": 1020001,
+        "eventname": "Danube Flood 2025",
+        "alertlevel": "Green",
+        "alertscore": 1,
+        "country": "Hungary",
+        "iscurrent": "false"
+      }
+    }
+  ]
+}

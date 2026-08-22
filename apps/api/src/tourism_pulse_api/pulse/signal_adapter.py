@@ -34,6 +34,10 @@ DIMENSION_MAP: dict[str, str] = {
     # signal alongside search_interest. See pulse.wikipedia_interest for
     # why it's a distinct signal_type rather than reusing search_interest.
     "wikipedia_pageviews": "demand",
+    # GDACS current highest disaster-alert score for a place's country -
+    # the first signal to feed the `risk` dimension. See
+    # pulse.disaster_risk for its (inverted-polarity) normalizer.
+    "disaster_alert_severity": "risk",
 }
 
 

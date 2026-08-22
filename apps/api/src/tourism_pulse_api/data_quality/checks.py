@@ -40,6 +40,9 @@ IMPOSSIBLE_RANGE_BOUNDS: dict[str, tuple[float, float | None]] = {
     "restaurant_count": (0.0, None),
     "search_interest": (0.0, None),
     "wikipedia_pageviews": (0.0, None),
+    # GDACS alertscore tops out around 3 (Red); a generous upper bound
+    # in case an unusually extreme episode-level score exceeds it.
+    "disaster_alert_severity": (0.0, 10.0),
     "news_mentions": (0.0, None),
     # GDELT's documented theoretical tone range.
     "news_sentiment": (-100.0, 100.0),
@@ -69,6 +72,9 @@ STALE_THRESHOLD_DAYS: dict[str, int] = {
     "news_mentions": 14,
     "news_sentiment": 14,
     "airport_traffic": 1,
+    # GDACS refreshes every ~6 minutes - a live-alert source like
+    # airport_traffic, not a periodic statistical release.
+    "disaster_alert_severity": 1,
 }
 DEFAULT_STALE_THRESHOLD_DAYS = 30
 
