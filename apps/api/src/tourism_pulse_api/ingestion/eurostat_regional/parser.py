@@ -9,15 +9,25 @@ EUROSTAT_API_BASE = "https://ec.europa.eu/eurostat/api/dissemination/statistics/
 
 NIGHTS_REGIONAL_DATASET = "tour_occ_nin2"
 NIGHTS_REGIONAL_MONTHLY_DATASET = "tour_occ_nin2m"
+# Nights booked through online platforms (Airbnb, Booking.com, Expedia,
+# Tripadvisor), from Eurostat's collaborative-economy statistics.
+PLATFORM_NUTS12_DATASET = "tour_ce_omn12"
+PLATFORM_NUTS3_DATASET = "tour_ce_oan3"
 
 # Same accommodation scope as the national nights adapter: hotels,
 # holiday and other short-stay accommodation, camping.
-_SCOPE = {"c_resid": "TOTAL", "nace_r2": "I551-I553"}
+OFFICIAL_SCOPE: dict[str, str | tuple[str, ...]] = {"c_resid": "TOTAL", "nace_r2": "I551-I553"}
+PLATFORM_SCOPE: dict[str, str | tuple[str, ...]] = {
+    "indic_to": "NGT_SP",
+    "c_resid": "TOTAL",
+    "unit": "NR",
+}
 
 INDICATOR_UNITS = {
     "tourism_intensity": "nights_per_1000_residents",
     "tourism_density": "nights_per_km2",
     "seasonality_peak_share": "share_of_annual_nights",
+    "str_share": "share_of_nights",
 }
 
 _UNIT_TO_INDICATOR = {"P_THAB": "tourism_intensity", "P_KM2": "tourism_density"}
@@ -31,13 +41,14 @@ class IndicatorValue:
     value: float
 
 
-def dataset_url(dataset: str, *, units: tuple[str, ...], since_year: int) -> str:
-    unit_params = "".join(f"&unit={unit}" for unit in units)
-    scope = "".join(f"&{key}={value}" for key, value in _SCOPE.items())
-    return (
-        f"{EUROSTAT_API_BASE}/{dataset}?format=JSON&lang=EN{scope}{unit_params}"
-        f"&sinceTimePeriod={since_year}"
+def dataset_url(dataset: str, *, filters: dict[str, str | tuple[str, ...]], since_year: int) -> str:
+    """A filter value may be a tuple to request several categories."""
+    params = "".join(
+        f"&{key}={item}"
+        for key, value in filters.items()
+        for item in (value if isinstance(value, tuple) else (value,))
     )
+    return f"{EUROSTAT_API_BASE}/{dataset}?format=JSON&lang=EN{params}&sinceTimePeriod={since_year}"
 
 
 def _is_region(geo: str) -> bool:
@@ -103,4 +114,36 @@ def parse_seasonality(payload: dict) -> list[IndicatorValue]:
             continue
         peak_share = max(months.values()) / total
         rows.append(IndicatorValue(geo, "seasonality_peak_share", year, peak_share))
+    return rows
+
+
+def parse_nights(payload: dict) -> dict[tuple[str, int], float]:
+    """Absolute annual nights per (region, year): official NR cells, or a
+    platform dataset's yearly total (month TOTAL where months exist)."""
+    nights = {}
+    for cell, value in _cells(payload):
+        if cell.get("unit") != "NR" or cell.get("month", "TOTAL") != "TOTAL":
+            continue
+        if not _is_region(cell["geo"]) or not math.isfinite(value) or value < 0:
+            continue
+        nights[(cell["geo"], int(cell["time"]))] = value
+    return nights
+
+
+def str_share(
+    official: dict[tuple[str, int], float], platform: dict[tuple[str, int], float]
+) -> list[IndicatorValue]:
+    """Platform nights as a share of platform plus official nights.
+
+    Approximate: some platform-listed properties are registered
+    establishments already counted in the official figure, so this can
+    somewhat understate the true share of non-hotel stays.
+    """
+    rows = []
+    for (geo, year), platform_nights in platform.items():
+        official_nights = official.get((geo, year))
+        if official_nights is None or platform_nights + official_nights <= 0:
+            continue
+        share = platform_nights / (platform_nights + official_nights)
+        rows.append(IndicatorValue(geo, "str_share", year, share))
     return rows

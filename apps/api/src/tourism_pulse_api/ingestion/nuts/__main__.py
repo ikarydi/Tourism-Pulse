@@ -29,7 +29,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         prog="python -m tourism_pulse_api.ingestion.nuts",
         description="Load NUTS boundaries from GISCO and assign places their NUTS code.",
     )
-    parser.add_argument("--level", type=int, default=2, choices=[1, 2, 3])
+    parser.add_argument(
+        "--level",
+        type=int,
+        default=2,
+        choices=[2, 3],
+        help="2 sets places' NUTS 2 (and national) codes, 3 their NUTS 3 codes.",
+    )
     parser.add_argument("--version", default=DEFAULT_VERSION, help="NUTS version, e.g. 2024.")
     parser.add_argument("--scale", default=DEFAULT_SCALE, help="GISCO scale, e.g. 01M.")
     parser.add_argument("--dry-run", action="store_true", help="Parse only; write nothing.")

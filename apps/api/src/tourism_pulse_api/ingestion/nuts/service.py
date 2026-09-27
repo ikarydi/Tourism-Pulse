@@ -72,13 +72,22 @@ class AssignmentResult:
 
 
 def assign_place_nuts_codes(db: Session, *, level: int = 2) -> AssignmentResult:
-    """Point-in-polygon for destinations, national code for countries."""
+    """Point-in-polygon for destinations, national code for countries.
+
+    Level 2 sets Place.nuts_code (and countries' national code); level 3
+    sets Place.nuts3_code for destinations only.
+    """
+    if level not in (2, 3):
+        raise ValueError("Places are assigned NUTS 2 or NUTS 3 codes only")
+
     assigned = 0
     unmatched: list[str] = []
     countries = 0
 
     for place in db.query(Place).all():
         if place.place_type == "country":
+            if level != 2:
+                continue
             country_code = place.destination.country_code if place.destination else None
             if country_code:
                 place.nuts_code = eurostat_geo_code(country_code)
@@ -100,9 +109,12 @@ def assign_place_nuts_codes(db: Session, *, level: int = 2) -> AssignmentResult:
 
         if code is None:
             unmatched.append(place.name)
-        else:
+            continue
+        if level == 2:
             place.nuts_code = code
-            assigned += 1
+        else:
+            place.nuts3_code = code
+        assigned += 1
 
     db.commit()
     return AssignmentResult(assigned, unmatched, countries)

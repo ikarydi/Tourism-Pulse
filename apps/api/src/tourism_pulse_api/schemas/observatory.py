@@ -13,6 +13,10 @@ class IndicatorReadingRead(BaseModel):
     peers: int
     source: str
     source_observation_id: int | None = None
+    # The region this indicator comes from: the finest level with data.
+    region_code: str
+    region_name: str | None = None
+    level_name: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -31,3 +35,11 @@ class ObservatoryRead(BaseModel):
     method: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ObservatoryRankingRead(ObservatoryRead):
+    """One row of the observatory overview (GET /observatory)."""
+
+    place_name: str
+    place_type: str
+    country_code: str | None = None

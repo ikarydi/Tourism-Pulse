@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Event, Place, PulseSnapshot, Signal
 from tourism_pulse_api.db.session import get_db
-from tourism_pulse_api.observatory.pressure import pressure_for_region
+from tourism_pulse_api.observatory.pressure import pressure_for_place
 from tourism_pulse_api.pulse.anomaly import detect_anomaly
 from tourism_pulse_api.pulse.engine import PRESSURE_DIMENSION, PulseEngine
 from tourism_pulse_api.pulse.event_adapter import event_to_signal
@@ -167,9 +167,7 @@ def calculate_place_pulse(
 
     # Tourism pressure comes from the observatory's official regional
     # indicators, reported beside the Pulse and never blended into it.
-    pressure_reading = (
-        pressure_for_region(db, place.nuts_code) if place.nuts_code is not None else None
-    )
+    pressure_reading = pressure_for_place(db, place)
     pressure = pressure_reading.score if pressure_reading is not None else None
 
     # Evidence (pulse.insights) - which signals/articles/videos/events

@@ -52,6 +52,14 @@ class Place(Base):
         nullable=True,
     )
 
+    # The NUTS 3 region containing a destination (None for countries).
+    # The observatory prefers it wherever Eurostat publishes an indicator
+    # at that finer level, falling back to nuts_code otherwise.
+    nuts3_code: Mapped[str | None] = mapped_column(
+        String(9),
+        nullable=True,
+    )
+
     destination: Mapped["Destination"] = relationship(
         back_populates="places",
     )

@@ -87,9 +87,10 @@ def _format_pressure(pressure: PressureReading) -> str:
         f"{pressure.region_name or pressure.nuts_code} ({pressure.level_name})"
     ]
     for reading in pressure.indicators:
+        region = reading.region_name or reading.region_code
         lines.append(
-            f"  - {reading.label}: {reading.value:,.2f} {reading.unit} in {reading.year}, "
-            f"rank {reading.rank} of {reading.peers} European regions "
+            f"  - {reading.label}: {reading.value:,.3f} {reading.unit} in {reading.year} "
+            f"({region}, {reading.level_name}), rank {reading.rank} of {reading.peers} "
             f"({reading.percentile:.0f}th percentile, source: {reading.source})"
         )
     return "\n".join(lines)

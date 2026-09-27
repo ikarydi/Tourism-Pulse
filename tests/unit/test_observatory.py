@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -9,13 +10,19 @@ from tourism_pulse_api.ingestion.eurostat.parser import eurostat_geo_code
 from tourism_pulse_api.ingestion.eurostat_regional.parser import (
     IndicatorValue,
     parse_intensity_density,
+    parse_nights,
     parse_seasonality,
+    str_share,
 )
 from tourism_pulse_api.ingestion.eurostat_regional.service import upsert_indicators
 from tourism_pulse_api.ingestion.nuts.parser import parse_nuts_geojson
 from tourism_pulse_api.ingestion.nuts.service import assign_place_nuts_codes, upsert_regions
 from tourism_pulse_api.main import app
-from tourism_pulse_api.observatory.pressure import pressure_for_region, pressure_level
+from tourism_pulse_api.observatory.pressure import (
+    pressure_for_codes,
+    pressure_for_region,
+    pressure_level,
+)
 
 client = TestClient(app)
 
@@ -381,3 +388,135 @@ def test_pulse_pressure_comes_from_the_observatory() -> None:
     assert pulse["pressure"] == pytest.approx(75.0)  # highest of 2, mid-rank
     history = client.get(f"/places/{place_id}/pulse/history").json()
     assert history[0]["pressure"] == pytest.approx(75.0)
+
+
+# --- short-term rental share -------------------------------------------------
+
+
+def test_parse_nights_keeps_yearly_totals_only() -> None:
+    payload = _jsonstat(
+        {"unit": ["NR"], "month": ["TOTAL", "M01"], "geo": ["XJ01"], "time": ["2025"]},
+        {0: 1000.0, 1: 80.0},
+    )
+
+    assert parse_nights(payload) == {("XJ01", 2025): 1000.0}
+
+
+def test_str_share_joins_platform_and_official_nights() -> None:
+    official = {("XK01", 2025): 600.0, ("XK02", 2025): 100.0}
+    platform = {("XK01", 2025): 400.0, ("XK03", 2025): 50.0}
+
+    (share,) = str_share(official, platform)
+
+    # XK02 has no platform figure and XK03 no official one: both skipped.
+    assert (share.nuts_code, share.indicator, share.year) == ("XK01", "str_share", 2025)
+    assert share.value == pytest.approx(0.4)
+
+
+# --- NUTS 3 ---------------------------------------------------------------
+
+
+def test_level_3_assignment_sets_nuts3_code_and_leaves_countries_alone() -> None:
+    db = SessionLocal()
+    try:
+        upsert_regions(
+            db,
+            [
+                replace(feature, level=3, code="XL011")
+                for feature in parse_nuts_geojson(
+                    _geojson(("XL01", "County", _square(110.0, 20.0))), version="2024"
+                )
+            ],
+        )
+        destination = Destination(country_code="HU", name="Test NUTS3 Destination")
+        db.add(destination)
+        db.flush()
+        town = Place(
+            destination_id=destination.id,
+            name="Town",
+            place_type="destination",
+            latitude=20.5,
+            longitude=110.5,
+            nuts_code="XL01",
+        )
+        country = Place(
+            destination_id=destination.id,
+            name="Hungary",
+            place_type="country",
+            nuts_code="HU",
+        )
+        db.add_all([town, country])
+        db.commit()
+
+        assign_place_nuts_codes(db, level=3)
+
+        db.refresh(town)
+        db.refresh(country)
+        assert town.nuts3_code == "XL011"
+        assert town.nuts_code == "XL01"
+        assert country.nuts3_code is None
+        assert country.nuts_code == "HU"
+    finally:
+        db.close()
+
+
+def test_each_indicator_uses_the_finest_region_with_data() -> None:
+    db = SessionLocal()
+    try:
+        _indicators(
+            db,
+            [
+                # Intensity exists at NUTS 3 (5-char peers)...
+                ("XM011", "tourism_intensity", 1996, 80.0),
+                ("XM012", "tourism_intensity", 1996, 20.0),
+                # ...density only at NUTS 2 (4-char peers).
+                ("XM01", "tourism_density", 1996, 5.0),
+                ("XM02", "tourism_density", 1996, 50.0),
+                # A NUTS 2 intensity value that must be ignored.
+                ("XM01", "tourism_intensity", 1996, 1.0),
+                ("XM02", "tourism_intensity", 1996, 2.0),
+            ],
+        )
+
+        reading = pressure_for_codes(db, ["XM011", "XM01"])
+
+        by_indicator = {r.indicator: r for r in reading.indicators}
+        assert by_indicator["tourism_intensity"].region_code == "XM011"
+        assert by_indicator["tourism_intensity"].level_name == "NUTS 3 region"
+        assert by_indicator["tourism_intensity"].percentile == pytest.approx(75.0)
+        assert by_indicator["tourism_density"].region_code == "XM01"
+        assert by_indicator["tourism_density"].percentile == pytest.approx(25.0)
+        assert reading.nuts_code == "XM011"  # finest region any indicator used
+    finally:
+        db.close()
+
+
+# --- overview -------------------------------------------------------------------
+
+
+def test_overview_ranks_places_by_score_and_skips_places_without_data() -> None:
+    db = SessionLocal()
+    try:
+        _indicators(
+            db,
+            [
+                ("XN01", "tourism_intensity", 1997, 10.0),
+                ("XN02", "tourism_intensity", 1997, 90.0),
+            ],
+        )
+    finally:
+        db.close()
+    low = _place_with_nuts("XN01")
+    high = _place_with_nuts("XN02")
+    empty = _place_with_nuts(None)
+
+    rows = client.get("/observatory").json()
+
+    ids = [row["place_id"] for row in rows]
+    assert ids.index(high) < ids.index(low)
+    assert empty not in ids
+    scores = [row["score"] for row in rows]
+    assert scores == sorted(scores, reverse=True)
+    high_row = rows[ids.index(high)]
+    assert high_row["place_name"].startswith("Observatory place")
+    assert high_row["country_code"] == "HU"
