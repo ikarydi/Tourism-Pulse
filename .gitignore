@@ -44,3 +44,6 @@ data/processed/
 # Secrets
 *.pem
 *.key
+
+# Raw API/file-derived caches behind research/nowcast/data/*.csv (re-fetchable)
+research/nowcast/data/*_cache/
