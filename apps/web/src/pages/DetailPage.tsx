@@ -19,6 +19,8 @@ import type { PlaceDemographics } from '../types/demographics'
 import type { Observatory } from '../types/observatory'
 import type { Place } from '../types/place'
 import type { DimensionKey, Pulse, PulseAnomaly, PulseSnapshot, PulseTrend } from '../types/pulse'
+import { AttentionPanel } from '../components/AttentionPanel'
+import { ForecastCard } from '../components/ForecastCard'
 import { PlaceContext } from '../components/PlaceContext'
 import { PlaceStatistics } from '../components/PlaceStatistics'
 import { isCurated } from '../lib/places'
@@ -55,6 +57,7 @@ type DetailProps = {
   catalog: Catalog | null
   onOpenExplore: (draft: ExploreDraft) => void
   onSelectPlace: (placeId: number) => void
+  onOpenOutlook?: () => void
 }
 
 /** Curated places get the Pulse page; EU regions, areas and cities the statistics page. */
@@ -62,7 +65,7 @@ export function DetailPage(props: DetailProps) {
   return isCurated(props.place) ? <CuratedDetail {...props} /> : <RegionDetail {...props} />
 }
 
-function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace }: DetailProps) {
+function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace, onOpenOutlook }: DetailProps) {
   const [state, setState] = useState<State>(EMPTY_STATE)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -156,6 +159,8 @@ function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace }:
           <span>{place.name} does not have enough signals or events to calculate a pulse.</span>
         </div>
         <PlaceContext place={place} places={places} onSelectPlace={onSelectPlace} />
+        <ForecastCard placeId={place.id} onOpenOutlook={onOpenOutlook} />
+        <AttentionPanel placeId={place.id} compact />
         <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
       </div>
     )
@@ -202,6 +207,9 @@ function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace }:
       </div>
 
       <PlaceContext place={place} places={places} onSelectPlace={onSelectPlace} />
+
+      <ForecastCard placeId={place.id} onOpenOutlook={onOpenOutlook} />
+      <AttentionPanel placeId={place.id} compact />
 
       <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
 

@@ -1,4 +1,12 @@
-export type View = 'dashboard' | 'explore' | 'map' | 'observatory' | 'destinations' | 'detail'
+export type View =
+  | 'dashboard'
+  | 'explore'
+  | 'outlook'
+  | 'attention'
+  | 'map'
+  | 'observatory'
+  | 'destinations'
+  | 'detail'
 
 export const NAV: { view: View; label: string; description: string; icon: string }[] = [
   {
@@ -12,6 +20,18 @@ export const NAV: { view: View; label: string; description: string; icon: string
     label: 'Explore',
     description: 'Combine any stored data into a chart, or ask a question.',
     icon: 'M4 19V5M4 19h16M8 15l3-4 3 2 4-6',
+  },
+  {
+    view: 'outlook',
+    label: 'Outlook',
+    description: 'Official nights forecast 12 months ahead, with ranges and a public track record.',
+    icon: 'M3 17l6-6 4 4 8-8M15 7h6v6',
+  },
+  {
+    view: 'attention',
+    label: 'Attention',
+    description: 'Who is reading about each place on Wikipedia, and what international news says.',
+    icon: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   },
   {
     view: 'map',

@@ -3,6 +3,7 @@ import { getPlaceDemographics } from '../api/demographics'
 import { getPlaceObservatory } from '../api/observatory'
 import { DemographicsCard } from '../components/DemographicsCard'
 import { ObservatoryCard } from '../components/ObservatoryCard'
+import { ForecastCard } from '../components/ForecastCard'
 import { PlaceContext } from '../components/PlaceContext'
 import { PlaceStatistics } from '../components/PlaceStatistics'
 import { formatNumber } from '../lib/format'
@@ -21,12 +22,14 @@ export function RegionDetail({
   catalog,
   onOpenExplore,
   onSelectPlace,
+  onOpenOutlook,
 }: {
   place: Place
   places: Place[]
   catalog: Catalog | null
   onOpenExplore: (draft: ExploreDraft) => void
   onSelectPlace: (placeId: number) => void
+  onOpenOutlook?: () => void
 }) {
   const [observatory, setObservatory] = useState<Observatory | null>(null)
   // null while loading, so an empty result can hide the card instead of flashing it.
@@ -88,6 +91,7 @@ export function RegionDetail({
       </section>
 
       <PlaceContext place={place} places={places} onSelectPlace={onSelectPlace} />
+      <ForecastCard placeId={place.id} onOpenOutlook={onOpenOutlook} />
 
       <div className={hasDemographics ? 'detail-grid' : 'detail-grid detail-grid-single'}>
         <ObservatoryCard observatory={observatory} placeName={place.name} />

@@ -2,6 +2,12 @@
 
 python -m tourism_pulse_api.ingestion.wikipedia_monthly
 python -m tourism_pulse_api.ingestion.wikipedia_monthly --dry-run
+
+The total (`wikipedia_views_monthly`) is the English and German articles
+(Hungarian too for KSH tourism areas), as used since the nowcast research.
+Views per language edition - the market languages in articles.py plus the
+place's own - go to signal_breakdowns under the same signal type, as a read
+on which source markets are looking.
 """
 
 import argparse
@@ -12,19 +18,22 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime
 
 from sqlalchemy.dialects.postgresql import insert
 
-from tourism_pulse_api.db.models import Place, Signal
+from tourism_pulse_api.db.models import Place, Signal, SignalBreakdown
 from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
 from tourism_pulse_api.ingestion.wikipedia_monthly.articles import (
     DESTINATION_TITLES,
     KSH_AREA_ARTICLES,
+    LOCAL_LANGUAGES,
+    MARKET_LANGUAGES,
     USER_AGENT,
     Article,
-    resolve_en_titles,
+    resolve_titles,
 )
 
 SOURCE_NAME = "wikipedia"
@@ -42,7 +51,7 @@ def _monthly_views(article: Article, end: str) -> dict[str, int]:
         end=end,
     )
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    for attempt in range(6):
+    for attempt in range(8):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
                 items = json.load(response)["items"]
@@ -50,37 +59,80 @@ def _monthly_views(article: Article, end: str) -> dict[str, int]:
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 return {}
-            if exc.code != 429 or attempt == 5:
+            if exc.code != 429 or attempt == 7:
                 raise
-            time.sleep(2**attempt * 2)
+            # Throttled: back off for up to two minutes before retrying.
+            time.sleep(min(120, 5 * 2**attempt))
     return {}
 
 
-def _articles_for(places: list[Place]) -> tuple[dict[int, list[Article]], list[str]]:
-    articles: dict[int, list[Article]] = {}
+def _country_code(place: Place) -> str | None:
+    return place.destination.country_code if place.destination else None
+
+
+def _articles_for(
+    places: list[Place],
+) -> tuple[dict[int, list[Article]], dict[int, list[Article]], list[str]]:
+    """Per place: the articles summed into the total, the articles per
+    language edition for the breakdown, and names with no usable article."""
+    totals: dict[int, list[Article]] = {}
+    editions: dict[int, list[Article]] = {}
     unresolved: list[str] = []
     to_resolve: dict[int, str] = {}
     for place in places:
         if place.name in KSH_AREA_ARTICLES:
-            articles[place.id] = [
+            ksh = [
                 Article(language, title)
                 for language, titles in KSH_AREA_ARTICLES[place.name].items()
                 for title in titles
             ]
+            totals[place.id] = ksh
+            editions[place.id] = ksh
         elif place.place_type == "destination":
             to_resolve[place.id] = DESTINATION_TITLES.get(place.name, place.name)
         else:
             to_resolve[place.id] = place.name
-    resolved = resolve_en_titles(sorted(set(to_resolve.values())))
-    names = {place.id: place.name for place in places}
+    resolved = resolve_titles(sorted(set(to_resolve.values())))
+    by_id = {place.id: place for place in places}
     for place_id, name in to_resolve.items():
         titles = resolved.get(name)
         if titles is None:
-            unresolved.append(names[place_id])
+            unresolved.append(by_id[place_id].name)
             continue
-        english, german = titles
-        articles[place_id] = [Article("en", english)] + ([Article("de", german)] if german else [])
-    return articles, unresolved
+        totals[place_id] = [Article("en", titles["en"])] + (
+            [Article("de", titles["de"])] if "de" in titles else []
+        )
+        local = LOCAL_LANGUAGES.get(_country_code(by_id[place_id]) or "")
+        languages = list(MARKET_LANGUAGES)
+        if local and local not in languages:
+            languages.append(local)
+        editions[place_id] = [
+            Article(language, titles[language]) for language in languages if language in titles
+        ]
+    return totals, editions, unresolved
+
+
+def _month_end(month: str) -> datetime:
+    year, number = int(month[:4]), int(month[4:6])
+    next_month = date(year + (number == 12), number % 12 + 1, 1)
+    last_day = date.fromordinal(next_month.toordinal() - 1)
+    return datetime(last_day.year, last_day.month, last_day.day, tzinfo=UTC)
+
+
+def _summed(
+    items: list[Article], fetched: dict[Article, dict[str, int]], current_month: str
+) -> dict[str, int]:
+    """month -> views over `items`, for months every item reports and
+    never the current, incomplete month."""
+    months: dict[str, list[int]] = defaultdict(list)
+    for article in items:
+        for month, views in fetched.get(article, {}).items():
+            months[month].append(views)
+    return {
+        month: sum(values)
+        for month, values in months.items()
+        if len(values) == len(items) and month < current_month
+    }
 
 
 def run(argv: list[str] | None = None) -> int:
@@ -95,7 +147,10 @@ def run(argv: list[str] | None = None) -> int:
     db = SessionLocal()
     try:
         places = db.query(Place).filter(Place.place_type.in_(["country", "destination"])).all()
-        articles, unresolved = _articles_for(places)
+        totals, editions, unresolved = _articles_for(places)
+        # End the read transaction before the long fetch: an open one holds
+        # locks that block migrations for the whole run.
+        db.commit()
         if unresolved:
             print(
                 f"[SKIPPED] no unambiguous article: {', '.join(sorted(unresolved))}",
@@ -103,15 +158,22 @@ def run(argv: list[str] | None = None) -> int:
             )
         if args.dry_run:
             for place in places:
-                if place.id in articles:
-                    titles = ", ".join(f"{a.language}:{a.title}" for a in articles[place.id])
-                    print(f"[DRY RUN] {place.name}: {titles}")
+                if place.id in totals:
+                    titles = ", ".join(f"{a.language}:{a.title}" for a in totals[place.id])
+                    languages = ", ".join(a.language for a in editions.get(place.id, []))
+                    print(f"[DRY RUN] {place.name}: {titles} | editions: {languages}")
             return 0
 
-        fetched: dict[Article, dict[str, int]] = {}
-        for article in sorted({a for items in articles.values() for a in items}, key=str):
-            fetched[article] = _monthly_views(article, end)
-            time.sleep(0.5)  # stay polite to the Wikimedia REST API
+        unique = sorted(
+            {a for items in [*totals.values(), *editions.values()] for a in items}, key=str
+        )
+
+        def fetch(article: Article) -> tuple[Article, dict[str, int]]:
+            time.sleep(0.5)  # about four requests a second in all: polite to Wikimedia
+            return article, _monthly_views(article, end)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fetched: dict[Article, dict[str, int]] = dict(pool.map(fetch, unique))
 
         observation = archive_raw_observation(
             db,
@@ -125,33 +187,38 @@ def run(argv: list[str] | None = None) -> int:
             source_url=PAGEVIEWS_URL,
         )
 
-        rows = []
-        for place_id, items in articles.items():
-            months: dict[str, list[int]] = defaultdict(list)
+        rows = [
+            {
+                "place_id": place_id,
+                "signal_type": SIGNAL_TYPE,
+                "value": views,
+                "unit": "views",
+                "observed_at": _month_end(month),
+                "source": SOURCE_NAME,
+                "source_url": "https://wikimedia.org/api/rest_v1/metrics/pageviews",
+                "source_observation_id": observation.id,
+            }
+            for place_id, items in totals.items()
+            for month, views in _summed(items, fetched, current_month).items()
+        ]
+        breakdowns = []
+        for place_id, items in editions.items():
+            by_language: dict[str, list[Article]] = defaultdict(list)
             for article in items:
-                for month, views in fetched.get(article, {}).items():
-                    months[month].append(views)
-            for month, values in months.items():
-                # Every article must report the month, and never the current one.
-                if len(values) != len(items) or month >= current_month:
-                    continue
-                year, number = int(month[:4]), int(month[4:6])
-                next_month = date(year + (number == 12), number % 12 + 1, 1)
-                last_day = date.fromordinal(next_month.toordinal() - 1)
-                rows.append(
-                    {
-                        "place_id": place_id,
-                        "signal_type": SIGNAL_TYPE,
-                        "value": sum(values),
-                        "unit": "views",
-                        "observed_at": datetime(
-                            last_day.year, last_day.month, last_day.day, tzinfo=UTC
-                        ),
-                        "source": SOURCE_NAME,
-                        "source_url": "https://wikimedia.org/api/rest_v1/metrics/pageviews",
-                        "source_observation_id": observation.id,
-                    }
-                )
+                by_language[article.language].append(article)
+            for language, language_items in by_language.items():
+                for month, views in _summed(language_items, fetched, current_month).items():
+                    breakdowns.append(
+                        {
+                            "place_id": place_id,
+                            "signal_type": SIGNAL_TYPE,
+                            "observed_at": _month_end(month),
+                            "dimension": "language",
+                            "key": language,
+                            "value": views,
+                            "source": SOURCE_NAME,
+                        }
+                    )
         for start in range(0, len(rows), 1000):
             statement = insert(Signal).values(rows[start : start + 1000])
             statement = statement.on_conflict_do_update(
@@ -162,9 +229,16 @@ def run(argv: list[str] | None = None) -> int:
                 },
             )
             db.execute(statement)
+        for start in range(0, len(breakdowns), 1000):
+            statement = insert(SignalBreakdown).values(breakdowns[start : start + 1000])
+            statement = statement.on_conflict_do_update(
+                constraint="uq_signal_breakdowns_place_type_observed_dimension_key",
+                set_={"value": statement.excluded.value},
+            )
+            db.execute(statement)
         db.commit()
-        print(f"[INGESTED] {len(rows)} monthly values for {len(articles)} places")
-        print(f"    from {len(fetched)} articles")
+        print(f"[INGESTED] {len(rows)} monthly values for {len(totals)} places")
+        print(f"    and {len(breakdowns)} language values, from {len(fetched)} articles")
     finally:
         db.close()
     return 0

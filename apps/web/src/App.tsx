@@ -11,7 +11,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DetailPage } from './pages/DetailPage'
 import { ExplorePage, type ExploreDraft } from './pages/ExplorePage'
 import { MapPage } from './pages/MapPage'
+import { AttentionPage } from './pages/AttentionPage'
 import { ObservatoryPage } from './pages/ObservatoryPage'
+import { OutlookPage } from './pages/OutlookPage'
 import { OverviewPage } from './pages/OverviewPage'
 import type { Catalog, SavedView } from './types/explore'
 import type { Place } from './types/place'
@@ -32,6 +34,8 @@ function App() {
   // Bumped to remount Explore with a new draft, and to refresh saved views.
   const [exploreKey, setExploreKey] = useState(0)
   const [viewsVersion, setViewsVersion] = useState(0)
+  // The place the Outlook page opens on when reached from a place page.
+  const [outlookFocus, setOutlookFocus] = useState<number | null>(null)
   const [apiOnline, setApiOnline] = useState<boolean | null>(null)
   const [checkedAt, setCheckedAt] = useState<Date | null>(null)
 
@@ -188,6 +192,16 @@ function App() {
             />
           )}
 
+          {view === 'outlook' && (
+            <OutlookPage
+              key={outlookFocus ?? 'all'}
+              focusPlaceId={outlookFocus}
+              onOpenPlace={(placeId) => openPlace(placeId)}
+            />
+          )}
+
+          {view === 'attention' && <AttentionPage onOpenPlace={(placeId) => openPlace(placeId)} />}
+
           {!loadingPlaces && !!places.length && view === 'observatory' && (
             <ObservatoryPage places={places} onSelectPlace={(placeId) => openPlace(placeId)} />
           )}
@@ -200,6 +214,10 @@ function App() {
               catalog={catalog}
               onOpenExplore={openExplore}
               onSelectPlace={(placeId) => openPlace(placeId)}
+              onOpenOutlook={() => {
+                setOutlookFocus(selectedPlace.id)
+                setView('outlook')
+              }}
             />
           )}
         </section>

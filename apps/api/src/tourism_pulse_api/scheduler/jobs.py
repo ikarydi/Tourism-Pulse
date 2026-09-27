@@ -28,12 +28,15 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Place
+from tourism_pulse_api.forecasting.__main__ import run as run_forecasting
 from tourism_pulse_api.ingestion.eurostat.__main__ import run as run_eurostat
 from tourism_pulse_api.ingestion.eurostat.parser import eurostat_geo_code
+from tourism_pulse_api.ingestion.eurostat_bulk.__main__ import run as run_eurostat_bulk
 from tourism_pulse_api.ingestion.eurostat_regional.__main__ import run as run_eurostat_regional
 from tourism_pulse_api.ingestion.events.__main__ import run as run_events
 from tourism_pulse_api.ingestion.gdacs.__main__ import run as run_gdacs
 from tourism_pulse_api.ingestion.gdelt.__main__ import run as run_gdelt
+from tourism_pulse_api.ingestion.gdelt_gkg.__main__ import run as run_gdelt_gkg
 from tourism_pulse_api.ingestion.ksh.__main__ import run as run_ksh
 from tourism_pulse_api.ingestion.ksh.parser import SUPPORTED_REGIONS as KSH_SUPPORTED_REGIONS
 from tourism_pulse_api.ingestion.ksh_capacity.__main__ import run as run_ksh_capacity
@@ -42,6 +45,7 @@ from tourism_pulse_api.ingestion.opensky.__main__ import run as run_opensky
 from tourism_pulse_api.ingestion.osm.__main__ import run as run_osm
 from tourism_pulse_api.ingestion.weather.__main__ import run as run_weather
 from tourism_pulse_api.ingestion.wikipedia.__main__ import run as run_wikipedia
+from tourism_pulse_api.ingestion.wikipedia_monthly.__main__ import run as run_wikipedia_monthly
 from tourism_pulse_api.ingestion.youtube.__main__ import run as run_youtube
 
 RunFn = Callable[[list[str] | None], int]
@@ -239,6 +243,11 @@ def build_argv_eurostat(db: Session) -> list[list[str]]:
 # --- eurostat_regional: one run covers every NUTS region --------------------
 
 
+def build_argv_once(db: Session) -> list[list[str]]:
+    """Jobs that cover every place in one run (bulk loaders, forecasts)."""
+    return [[]]
+
+
 def build_argv_eurostat_regional(db: Session) -> list[list[str]]:
     """Annual regional indicators for all of Europe in one run, not per
     place; weekly because Eurostat revises and releases irregularly."""
@@ -282,5 +291,25 @@ SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
         run_eurostat_regional,
         build_argv_eurostat_regional,
         interval_minutes=_ONE_WEEK_MINUTES,
+    ),
+    # EU-wide official statistics for every place type, in one bulk run.
+    ScheduledAdapter(
+        "eurostat_bulk", run_eurostat_bulk, build_argv_once, interval_minutes=_ONE_WEEK_MINUTES
+    ),
+    # Monthly attention history: Wikipedia by language edition, GDELT
+    # coverage and topics (the daily run downloads only the new day).
+    ScheduledAdapter(
+        "wikipedia_monthly",
+        run_wikipedia_monthly,
+        build_argv_once,
+        interval_minutes=_ONE_WEEK_MINUTES,
+    ),
+    ScheduledAdapter(
+        "gdelt_gkg", run_gdelt_gkg, build_argv_once, interval_minutes=_ONE_DAY_MINUTES
+    ),
+    # Issues forecasts once a new official month lands; earlier live
+    # forecasts are never overwritten.
+    ScheduledAdapter(
+        "forecasting", run_forecasting, build_argv_once, interval_minutes=_ONE_DAY_MINUTES
     ),
 ]

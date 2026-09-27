@@ -17,6 +17,9 @@ dependencies = [
     "apscheduler>=3.10,<4",
     "fastapi>=0.115,<1",
     "groq>=1.6,<2",
+    # Forecasting (tourism_pulse_api.forecasting) and attention insights.
+    "numpy>=2,<3",
+    "pandas>=2.2,<3",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.7,<3",
     "sqlalchemy>=2,<3",

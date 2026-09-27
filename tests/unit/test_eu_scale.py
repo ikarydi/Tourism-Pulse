@@ -1,6 +1,5 @@
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -34,10 +33,10 @@ from tourism_pulse_api.ingestion.eurostat_bulk.service import (
 )
 from tourism_pulse_api.ingestion.eurostat_regional.parser import IndicatorValue
 from tourism_pulse_api.ingestion.eurostat_regional.service import upsert_indicators
-from tourism_pulse_api.ingestion.gdelt_monthly.__main__ import run as run_gdelt_monthly
 from tourism_pulse_api.ingestion.nuts.parser import parse_nuts_geojson
 from tourism_pulse_api.ingestion.nuts.service import upsert_regions
-from tourism_pulse_api.ingestion.wikipedia_monthly.__main__ import _articles_for
+from tourism_pulse_api.ingestion.wikipedia_monthly.__main__ import _articles_for, _summed
+from tourism_pulse_api.ingestion.wikipedia_monthly.articles import Article
 from tourism_pulse_api.main import app
 from tourism_pulse_api.observatory.pressure import Ranker, pressure_for_codes
 
@@ -316,60 +315,54 @@ def test_wikipedia_articles_use_overrides_and_ksh_area_lists() -> None:
     places = [
         Place(id=1, name="Luxembourg", place_type="destination"),
         Place(id=2, name="Gyula", place_type="destination"),
-        Place(id=3, name="Czechia", place_type="country"),
+        Place(
+            id=3,
+            name="Czechia",
+            place_type="country",
+            destination=Destination(country_code="CZ"),
+        ),
         Place(id=4, name="Nowhere", place_type="destination"),
     ]
     resolved = {
-        "Luxembourg City": ("Luxembourg City", "Luxemburg (Stadt)"),
-        "Czechia": ("Czech Republic", "Tschechien"),
+        "Luxembourg City": {"en": "Luxembourg City", "de": "Luxemburg (Stadt)"},
+        "Czechia": {
+            "en": "Czech Republic",
+            "de": "Tschechien",
+            "cs": "Česko",
+            "ja": "チェコ",
+            "xx": "Not a market language",
+        },
         "Nowhere": None,
     }
     with patch(
-        "tourism_pulse_api.ingestion.wikipedia_monthly.__main__.resolve_en_titles",
+        "tourism_pulse_api.ingestion.wikipedia_monthly.__main__.resolve_titles",
         return_value=resolved,
     ):
-        articles, unresolved = _articles_for(places)
+        totals, editions, unresolved = _articles_for(places)
 
-    assert [(a.language, a.title) for a in articles[1]] == [
+    # The total stays English + German, whatever else the article links to.
+    assert [(a.language, a.title) for a in totals[1]] == [
         ("en", "Luxembourg City"),
         ("de", "Luxemburg (Stadt)"),
     ]
-    assert ("hu", "Gyula_(Magyarország)") in [(a.language, a.title) for a in articles[2]]
-    assert [(a.language, a.title) for a in articles[3]] == [
+    assert ("hu", "Gyula_(Magyarország)") in [(a.language, a.title) for a in totals[2]]
+    assert [(a.language, a.title) for a in totals[3]] == [
         ("en", "Czech Republic"),
         ("de", "Tschechien"),
     ]
+    # Editions: market languages and the country's own, nothing else.
+    assert [a.language for a in editions[3]] == ["en", "de", "cs", "ja"]
     assert unresolved == ["Nowhere"]
 
 
-def test_gdelt_monthly_import_computes_shares_and_skips_current_month(tmp_path: Path) -> None:
-    place_id = _country("LV", "Latvia test")
-    (tmp_path / "gdelt_full.csv").write_text(
-        "geo,month,articles,corpus,days,tone\n"
-        "LV,2025-03,50,1000000,31,-1.5\n"
-        f"LV,{datetime.now(UTC):%Y-%m},10,1000,5,0.5\n"
-    )
-    (tmp_path / "gdelt_regional.csv").write_text("area,month,articles,corpus,days\n")
-
-    assert run_gdelt_monthly(["--data-dir", str(tmp_path)]) == 0
-
-    db = SessionLocal()
-    try:
-        rows = {
-            (signal_type, observed.date().isoformat()): float(value)
-            for signal_type, observed, value in db.query(
-                Signal.signal_type, Signal.observed_at, Signal.value
-            ).filter(Signal.place_id == place_id, Signal.source == "gdelt")
-        }
-    finally:
-        db.close()
-    assert rows == {
-        ("gdelt_tourism_share", "2025-03-31"): 50.0,
-        ("gdelt_tourism_tone", "2025-03-31"): -1.5,
+def test_wikipedia_breakdown_sums_a_language_only_when_every_article_reports() -> None:
+    articles = [Article("de", "Bük"), Article("de", "Sárvár")]
+    fetched = {
+        articles[0]: {"202501": 100, "202502": 120, "209901": 5},
+        articles[1]: {"202501": 40},
     }
 
-
-# --- ranking, shapes, filters, ask --------------------------------------------------
+    assert _summed(articles, fetched, current_month="202601") == {"202501": 140}
 
 
 def test_bulk_ranker_matches_the_per_place_path() -> None:

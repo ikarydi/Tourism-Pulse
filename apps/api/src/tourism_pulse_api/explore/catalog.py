@@ -282,7 +282,7 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
         "per million articles",
         "month",
         "avg",
-        "GDELT articles with a tourism theme that mention the country, per million articles.",
+        "GDELT articles with a tourism theme that mention the place, per million articles.",
     ),
     "gdelt_tourism_tone": (
         "Tourism news tone",
@@ -292,13 +292,21 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
         "avg",
         "Average tone of those GDELT articles (negative = critical, positive = favourable).",
     ),
+    "gdelt_news_tone": (
+        "News tone",
+        _ATTENTION,
+        "tone",
+        "month",
+        "avg",
+        "Average tone of all GDELT articles that mention the place, whatever the topic.",
+    ),
     "gdelt_attention_share": (
         "News attention share",
         _ATTENTION,
         "per million articles",
         "month",
         "avg",
-        "GDELT articles on any topic that mention the area, per million articles.",
+        "GDELT articles on any topic that mention the place, per million articles.",
     ),
     **{
         f"{medium}_{category}_mentions": (
