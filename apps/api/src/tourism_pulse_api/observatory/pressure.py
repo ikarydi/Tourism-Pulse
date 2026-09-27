@@ -12,6 +12,7 @@ carrying-capacity threshold, which no official source defines.
 Deterministic, like the Pulse engine (spec section 24): no model, no LLM.
 """
 
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
 
 from sqlalchemy import func
@@ -106,6 +107,58 @@ class PeerCache:
         return self.values[key]
 
 
+def _make_reading(
+    *,
+    indicator: str,
+    row: RegionalIndicator | tuple,
+    code: str,
+    lower: int,
+    equal: int,
+    peers: int,
+    region_name: str | None,
+) -> IndicatorReading:
+    value, unit, year, source, observation_id = (
+        (row.value, row.unit, row.year, row.source, row.source_observation_id)
+        if isinstance(row, RegionalIndicator)
+        else row
+    )
+    return IndicatorReading(
+        indicator=indicator,
+        label=INDICATOR_LABELS[indicator],
+        definition=INDICATOR_DEFINITIONS[indicator],
+        value=value,
+        unit=unit,
+        year=year,
+        percentile=round(100 * (lower + 0.5 * equal) / peers, 1),
+        rank=peers - lower - equal + 1,
+        peers=peers,
+        source=source,
+        source_observation_id=observation_id,
+        region_code=code,
+        region_name=region_name,
+        level_name=LEVEL_NAMES.get(len(code), "region"),
+    )
+
+
+def _assemble(codes: list[str], readings: list[IndicatorReading], region_name) -> PressureReading:
+    score = (
+        round(sum(reading.percentile for reading in readings) / len(readings), 1)
+        if readings
+        else None
+    )
+    # Headline region: the finest one any indicator actually used.
+    used = [code for code in codes if any(r.region_code == code for r in readings)]
+    headline = used[0] if used else codes[0]
+    return PressureReading(
+        nuts_code=headline,
+        region_name=region_name(headline),
+        level_name=LEVEL_NAMES.get(len(headline), "region"),
+        indicators=readings,
+        score=score,
+        level=pressure_level(score) if score is not None else None,
+    )
+
+
 def pressure_level(score: float) -> str:
     if score >= HIGH_FROM:
         return "high"
@@ -134,25 +187,14 @@ def _reading(
             continue
 
         peer_values = cache.peers(db, indicator, latest.year, len(code))
-        lower = sum(value < latest.value for value in peer_values)
-        equal = sum(value == latest.value for value in peer_values)
-        higher = len(peer_values) - lower - equal
-
-        return IndicatorReading(
+        return _make_reading(
             indicator=indicator,
-            label=INDICATOR_LABELS[indicator],
-            definition=INDICATOR_DEFINITIONS[indicator],
-            value=latest.value,
-            unit=latest.unit,
-            year=latest.year,
-            percentile=round(100 * (lower + 0.5 * equal) / len(peer_values), 1),
-            rank=higher + 1,
+            row=latest,
+            code=code,
+            lower=sum(value < latest.value for value in peer_values),
+            equal=sum(value == latest.value for value in peer_values),
             peers=len(peer_values),
-            source=latest.source,
-            source_observation_id=latest.source_observation_id,
-            region_code=code,
             region_name=_region_name(db, code),
-            level_name=LEVEL_NAMES.get(len(code), "region"),
         )
     return None
 
@@ -167,22 +209,7 @@ def pressure_for_codes(
         for indicator in INDICATOR_LABELS
         if (reading := _reading(db, codes, indicator, cache)) is not None
     ]
-    score = (
-        round(sum(reading.percentile for reading in readings) / len(readings), 1)
-        if readings
-        else None
-    )
-    # Headline region: the finest one any indicator actually used.
-    used = [code for code in codes if any(r.region_code == code for r in readings)]
-    headline = used[0] if used else codes[0]
-    return PressureReading(
-        nuts_code=headline,
-        region_name=_region_name(db, headline),
-        level_name=LEVEL_NAMES.get(len(headline), "region"),
-        indicators=readings,
-        score=score,
-        level=pressure_level(score) if score is not None else None,
-    )
+    return _assemble(codes, readings, lambda code: _region_name(db, code))
 
 
 def pressure_for_region(db: Session, nuts_code: str) -> PressureReading:
@@ -198,3 +225,63 @@ def pressure_for_place(
 ) -> PressureReading | None:
     codes = place_codes(place)
     return pressure_for_codes(db, codes, cache) if codes else None
+
+
+class Ranker:
+    """Every region's readings from one pass over regional_indicators.
+
+    Same results as pressure_for_codes (shared _make_reading/_assemble),
+    for ranking thousands of places at once: the per-place path issues
+    several queries per indicator, which is fine for one destination page
+    and far too slow for an overview of every EU region.
+    """
+
+    def __init__(self, db: Session) -> None:
+        latest: dict[tuple[str, str], tuple] = {}
+        peers: dict[tuple[str, int, int], list[float]] = {}
+        for code, indicator, year, value, unit, source, observation_id in db.query(
+            RegionalIndicator.nuts_code,
+            RegionalIndicator.indicator,
+            RegionalIndicator.year,
+            RegionalIndicator.value,
+            RegionalIndicator.unit,
+            RegionalIndicator.source,
+            RegionalIndicator.source_observation_id,
+        ):
+            peers.setdefault((indicator, year, len(code)), []).append(value)
+            current = latest.get((code, indicator))
+            if current is None or year > current[2]:
+                latest[(code, indicator)] = (value, unit, year, source, observation_id)
+        self._latest = latest
+        self._peers = {key: sorted(values) for key, values in peers.items()}
+        self._names = dict(db.query(NutsRegion.code, NutsRegion.name))
+
+    def _reading(self, codes: list[str], indicator: str) -> IndicatorReading | None:
+        for code in codes:
+            row = self._latest.get((code, indicator))
+            if row is None:
+                continue
+            values = self._peers[(indicator, row[2], len(code))]
+            lower = bisect_left(values, row[0])
+            return _make_reading(
+                indicator=indicator,
+                row=row,
+                code=code,
+                lower=lower,
+                equal=bisect_right(values, row[0]) - lower,
+                peers=len(values),
+                region_name=self._names.get(code),
+            )
+        return None
+
+    def pressure_for_codes(self, codes: list[str]) -> PressureReading:
+        readings = [
+            reading
+            for indicator in INDICATOR_LABELS
+            if (reading := self._reading(codes, indicator)) is not None
+        ]
+        return _assemble(codes, readings, self._names.get)
+
+    def pressure_for_place(self, place: Place) -> PressureReading | None:
+        codes = place_codes(place)
+        return self.pressure_for_codes(codes) if codes else None

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.db.session import get_db
-from tourism_pulse_api.observatory.pressure import PeerCache, pressure_for_place
+from tourism_pulse_api.observatory.pressure import Ranker, pressure_for_place
 from tourism_pulse_api.schemas.observatory import ObservatoryRankingRead, ObservatoryRead
 
 router = APIRouter(tags=["observatory"])
@@ -33,10 +33,10 @@ def get_place_observatory(
 @router.get("/observatory", response_model=list[ObservatoryRankingRead])
 def list_observatory(db: Session = Depends(get_db)) -> list[ObservatoryRankingRead]:
     """Every place with regional data, highest tourism pressure first."""
-    cache = PeerCache()
+    ranker = Ranker(db)
     rows = []
     for place in db.query(Place).order_by(Place.name).all():
-        reading = pressure_for_place(db, place, cache)
+        reading = ranker.pressure_for_place(place)
         if reading is None or reading.score is None:
             continue
         rows.append(

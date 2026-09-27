@@ -29,7 +29,20 @@ _UPSERT_REGION = text(
     """
 )
 
-_REGION_FOR_POINT = text(
+# Containment first: it can use the GIST index on geom, so it is fast.
+_REGION_CONTAINING_POINT = text(
+    """
+    SELECT code
+    FROM nuts_regions
+    WHERE level = :level
+      AND ST_Contains(geom, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326))
+    LIMIT 1
+    """
+)
+
+# Fallback for points just off the coast: nearest region within reach.
+# Geography distance cannot use the index, so it only runs when needed.
+_REGION_NEAR_POINT = text(
     """
     SELECT code
     FROM nuts_regions
@@ -39,9 +52,7 @@ _REGION_FOR_POINT = text(
           ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
           :max_meters
       )
-    ORDER BY
-        ST_Contains(geom, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)) DESC,
-        geom::geography <-> ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+    ORDER BY geom::geography <-> ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
     LIMIT 1
     """
 )
@@ -85,6 +96,11 @@ def assign_place_nuts_codes(db: Session, *, level: int = 2) -> AssignmentResult:
     countries = 0
 
     for place in db.query(Place).all():
+        # Region and area places carry their own NUTS codes (set by
+        # ingestion.eu_locations); a point test would give a NUTS 2 region
+        # the code of one NUTS 3 area inside it.
+        if place.place_type in ("region", "area"):
+            continue
         if place.place_type == "country":
             if level != 2:
                 continue
@@ -97,15 +113,15 @@ def assign_place_nuts_codes(db: Session, *, level: int = 2) -> AssignmentResult:
         if place.latitude is None or place.longitude is None:
             continue
 
-        code = db.execute(
-            _REGION_FOR_POINT,
-            {
-                "level": level,
-                "latitude": place.latitude,
-                "longitude": place.longitude,
-                "max_meters": NEAREST_REGION_MAX_METERS,
-            },
-        ).scalar_one_or_none()
+        point = {
+            "level": level,
+            "latitude": place.latitude,
+            "longitude": place.longitude,
+            "max_meters": NEAREST_REGION_MAX_METERS,
+        }
+        code = db.execute(_REGION_CONTAINING_POINT, point).scalar_one_or_none()
+        if code is None:
+            code = db.execute(_REGION_NEAR_POINT, point).scalar_one_or_none()
 
         if code is None:
             unmatched.append(place.name)

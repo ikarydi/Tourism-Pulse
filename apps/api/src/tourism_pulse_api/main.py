@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
 from tourism_pulse_api.db.session import engine
@@ -14,6 +15,7 @@ from tourism_pulse_api.routers.observatory import router as observatory_router
 from tourism_pulse_api.routers.place import router as place_router
 from tourism_pulse_api.routers.places import router as places_router
 from tourism_pulse_api.routers.pulse import router as pulse_router
+from tourism_pulse_api.routers.regions import router as regions_router
 from tourism_pulse_api.routers.signals import router as signals_router
 from tourism_pulse_api.routers.videos import router as videos_router
 
@@ -28,6 +30,9 @@ app = FastAPI(
 # deploy where the frontend isn't served through that proxy. Open for now
 # (no auth/cookies to protect yet - spec section 27 Authentication is still
 # unbuilt); tighten allow_origins once a real frontend origin is deployed.
+# Region boundaries and bulk rankings are large JSON; compress them.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -47,6 +52,7 @@ app.include_router(demographics_router)
 app.include_router(lineage_router)
 app.include_router(observatory_router)
 app.include_router(explore_router)
+app.include_router(regions_router)
 app.include_router(pulse_router)
 
 @app.get("/")

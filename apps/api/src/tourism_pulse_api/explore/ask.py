@@ -12,8 +12,10 @@ import logging
 
 from groq import Groq, GroqError
 from pydantic import ValidationError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.explore.catalog import build_catalog
 from tourism_pulse_api.explore.query import resolve_places
 from tourism_pulse_api.schemas.explore import ViewSpec
@@ -31,8 +33,9 @@ Answer with one JSON object and nothing else:
   "spec": {
     "query": {
       "metrics": [1-4 metric ids, copied exactly from METRICS],
-      "places": [place ids from PLACES] or null for all places,
-      "place_type": "destination" or "country" or null,
+      "places": [place ids from PLACES] or null,
+      "place_names": [names of other places, e.g. a region or city] or null,
+      "place_type": "destination" | "city" | "region" | "area" | "country" | null,
       "grain": "day" | "month" | "year",
       "start": "YYYY-MM-DD" or null,
       "end": "YYYY-MM-DD" or null
@@ -45,10 +48,14 @@ Answer with one JSON object and nothing else:
     }
   }
 }
-Rules: use only ids that appear in METRICS and PLACES. Set "places" only when the
-question names specific places; for "cities" use places null with place_type
-"destination", for "countries" places null with place_type "country", for
-everything places null with place_type null. In "title" and "explanation" refer
+Rules: use only ids that appear in METRICS and PLACES. Place types: "destination"
+= the curated destinations listed in PLACES; "city" = about 500 further EU cities
+with official city statistics; "region" = NUTS 2 regions; "area" = NUTS 3 areas;
+"country" = the 27 EU countries. Set "places" only when the question names places
+listed in PLACES; for a named region, area or city not in PLACES, put its name in
+"place_names". Otherwise use places null with a place_type: "destinations" or
+"cities" in general -> "destination" (or "city" for all EU cities), "regions" ->
+"region", "countries" -> "country", everything -> null. In "title" and "explanation" refer
 to metrics by their labels, never by their ids. Trends over time: line
 (x=time). Comparing places on one metric: bar (x=place). Relationship between two
 metrics across places: scatter (x=place, first metric on the x axis, second on the
@@ -76,12 +83,33 @@ def _context(db: Session) -> str:
         f"{metric.group}"
         for metric in catalog.values()
     )
+    # Only curated destinations and countries are listed: the ~1,900
+    # generated regions, areas and cities would not fit in the prompt;
+    # the model names those instead (see _resolve_place_names).
     places = "\n".join(
         f"{place.id} | {place.name} | {place.place_type} | "
         f"{place.destination.country_code if place.destination else ''}"
         for place in resolve_places(db, None, None)
+        if place.place_type in ("destination", "country")
     )
     return f"METRICS:\n{metrics}\n\nPLACES:\n{places}"
+
+
+def _resolve_place_names(db: Session, names: list[str]) -> list[int]:
+    """Place ids for names the model gave instead of ids: exact
+    (case-insensitive) matches first, else names starting with it."""
+    ids: list[int] = []
+    for name in names[:20]:
+        needle = str(name).strip().lower()
+        if not needle:
+            continue
+        exact = db.query(Place.id).filter(func.lower(Place.name) == needle).all()
+        matches = (
+            exact
+            or db.query(Place.id).filter(func.lower(Place.name).startswith(needle)).limit(5).all()
+        )
+        ids.extend(place_id for (place_id,) in matches)
+    return ids
 
 
 def ask(db: Session, question: str) -> tuple[str, ViewSpec, str]:
@@ -107,6 +135,10 @@ def ask(db: Session, question: str) -> tuple[str, ViewSpec, str]:
     content = response.choices[0].message.content or ""
     try:
         answer = json.loads(content)
+        query = answer["spec"].get("query", {})
+        named = _resolve_place_names(db, query.pop("place_names", None) or [])
+        if named:
+            query["places"] = sorted({*(query.get("places") or []), *named})
         spec = ViewSpec.model_validate(answer["spec"])
     except (json.JSONDecodeError, KeyError, TypeError, ValidationError) as exc:
         raise AskInvalidError("Could not turn that question into a chart; try rephrasing.") from exc

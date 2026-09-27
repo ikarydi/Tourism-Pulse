@@ -36,7 +36,7 @@ from tourism_pulse_api.explore.catalog import (
     Metric,
     build_catalog,
 )
-from tourism_pulse_api.observatory.pressure import PeerCache, place_codes, pressure_for_place
+from tourism_pulse_api.observatory.pressure import Ranker, place_codes
 
 GRAINS = ("day", "month", "year")
 MAX_METRICS = 4
@@ -187,10 +187,10 @@ def _count_rows(db: Session, metric: Metric, place_ids: list[int], grain: str):
 
 
 def _static_rows(db: Session, metric: Metric, places: list[Place]):
-    cache = PeerCache()
+    ranker = Ranker(db)
     rows = []
     for place in places:
-        reading = pressure_for_place(db, place, cache)
+        reading = ranker.pressure_for_place(place)
         if reading is not None and reading.score is not None:
             rows.append((place.id, None, reading.score))
     return rows
@@ -219,10 +219,8 @@ def resolve_places(db: Session, place_ids: list[int] | None, place_type: str | N
     query = db.query(Place)
     if place_ids:
         query = query.filter(Place.id.in_(place_ids))
-    if place_type == "country":
-        query = query.filter(Place.place_type == "country")
-    elif place_type == "destination":
-        query = query.filter(Place.place_type != "country")
+    if place_type:
+        query = query.filter(Place.place_type == place_type)
     return query.order_by(Place.name).all()
 
 

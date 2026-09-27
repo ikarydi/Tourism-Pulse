@@ -56,7 +56,7 @@ def _is_region(geo: str) -> bool:
     return "_" not in geo and 2 <= len(geo) <= 5
 
 
-def _cells(payload: dict) -> list[tuple[dict[str, str], float]]:
+def jsonstat_cells(payload: dict) -> list[tuple[dict[str, str], float]]:
     """Decode a JSON-stat cube into ({dimension: category}, value) cells."""
     try:
         ids = payload["id"]
@@ -86,7 +86,7 @@ def _cells(payload: dict) -> list[tuple[dict[str, str], float]]:
 
 def parse_intensity_density(payload: dict) -> list[IndicatorValue]:
     rows = []
-    for cell, value in _cells(payload):
+    for cell, value in jsonstat_cells(payload):
         indicator = _UNIT_TO_INDICATOR.get(cell.get("unit", ""))
         if indicator is None or not _is_region(cell["geo"]):
             continue
@@ -99,7 +99,7 @@ def parse_intensity_density(payload: dict) -> list[IndicatorValue]:
 def parse_seasonality(payload: dict) -> list[IndicatorValue]:
     """Peak-month share per region and year, only for complete years."""
     monthly: dict[tuple[str, int], dict[str, float]] = {}
-    for cell, value in _cells(payload):
+    for cell, value in jsonstat_cells(payload):
         month = cell.get("month", "")
         if cell.get("unit") != "NR" or not month.startswith("M") or value < 0:
             continue
@@ -121,7 +121,7 @@ def parse_nights(payload: dict) -> dict[tuple[str, int], float]:
     """Absolute annual nights per (region, year): official NR cells, or a
     platform dataset's yearly total (month TOTAL where months exist)."""
     nights = {}
-    for cell, value in _cells(payload):
+    for cell, value in jsonstat_cells(payload):
         if cell.get("unit") != "NR" or cell.get("month", "TOTAL") != "TOTAL":
             continue
         if not _is_region(cell["geo"]) or not math.isfinite(value) or value < 0:

@@ -47,6 +47,8 @@ _OBSERVATORY = "Pressure observatory"
 _LIVE = "Live signals"
 _SUPPLY = "Supply"
 _MEDIA = "Media & events"
+_ATTENTION = "Online attention"
+_CULTURE = "Culture"
 
 _STATIC_METRICS: list[Metric] = [
     *(
@@ -217,6 +219,100 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
         "avg",
         "Bed places at tourist accommodation (annual).",
     ),
+    "tourism_nights_annual": (
+        "Tourism nights (annual)",
+        _OFFICIAL,
+        "nights",
+        "year",
+        "sum",
+        "Nights spent at tourist accommodation in the year (Eurostat; regions and cities).",
+    ),
+    "platform_nights_annual": (
+        "Platform-booked nights",
+        _OFFICIAL,
+        "nights",
+        "year",
+        "sum",
+        "Nights booked through Airbnb, Booking.com, Expedia and Tripadvisor (Eurostat).",
+    ),
+    "nights_per_resident_annual": (
+        "Nights per resident (city)",
+        _OFFICIAL,
+        "nights per resident",
+        "year",
+        "avg",
+        "Tourist nights in the city per resident (Eurostat Urban Audit).",
+    ),
+    "domestic_nights_annual": (
+        "Domestic guest nights",
+        _OFFICIAL,
+        "nights",
+        "year",
+        "sum",
+        "Nights spent by residents of the same country (Eurostat Urban Audit).",
+    ),
+    "foreign_nights_annual": (
+        "Foreign guest nights",
+        _OFFICIAL,
+        "nights",
+        "year",
+        "sum",
+        "Nights spent by guests from abroad (Eurostat Urban Audit).",
+    ),
+    "museum_visitors_annual": (
+        "Museum visitors",
+        _CULTURE,
+        "visitors",
+        "year",
+        "sum",
+        "Museum visits in the city per year (Eurostat Urban Audit).",
+    ),
+    "wikipedia_views_monthly": (
+        "Wikipedia views",
+        _ATTENTION,
+        "views",
+        "month",
+        "sum",
+        "Monthly views of the place's Wikipedia articles (English and German; Hungarian "
+        "areas also Hungarian).",
+    ),
+    "gdelt_tourism_share": (
+        "Tourism news share",
+        _ATTENTION,
+        "per million articles",
+        "month",
+        "avg",
+        "GDELT articles with a tourism theme that mention the country, per million articles.",
+    ),
+    "gdelt_tourism_tone": (
+        "Tourism news tone",
+        _ATTENTION,
+        "tone",
+        "month",
+        "avg",
+        "Average tone of those GDELT articles (negative = critical, positive = favourable).",
+    ),
+    "gdelt_attention_share": (
+        "News attention share",
+        _ATTENTION,
+        "per million articles",
+        "month",
+        "avg",
+        "GDELT articles on any topic that mention the area, per million articles.",
+    ),
+    **{
+        f"{medium}_{category}_mentions": (
+            f"{'News' if medium == 'news' else 'Video'} {category} mentions",
+            _ATTENTION,
+            "count",
+            "day",
+            "avg",
+            f"{'GDELT articles' if medium == 'news' else 'YouTube videos'} about the place "
+            f"classified as {category}.",
+        )
+        for medium in ("news", "video")
+        for category in ("event", "risk", "economic")
+    },
     "hotel_count": (
         "Hotels mapped",
         _SUPPLY,
@@ -255,7 +351,7 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
     ),
     "search_interest": (
         "YouTube search results",
-        _LIVE,
+        _ATTENTION,
         "count",
         "day",
         "avg",
@@ -263,7 +359,7 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
     ),
     "wikipedia_pageviews": (
         "Wikipedia views (30 days)",
-        _LIVE,
+        _ATTENTION,
         "views",
         "day",
         "avg",
@@ -271,7 +367,7 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
     ),
     "news_mentions": (
         "News mentions",
-        _LIVE,
+        _ATTENTION,
         "count",
         "day",
         "avg",

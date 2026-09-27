@@ -13,7 +13,9 @@ class QuerySpec(BaseModel):
     metrics: list[str] = Field(min_length=1, max_length=4)
     # None = every place (optionally narrowed by place_type).
     places: list[int] | None = None
-    place_type: Literal["destination", "country"] | None = None
+    # destination = curated places; city / region (NUTS 2) / area (NUTS 3)
+    # are generated from official geography (ingestion.eu_locations).
+    place_type: Literal["destination", "city", "region", "area", "country"] | None = None
     grain: Literal["day", "month", "year"] = "month"
     start: date | None = None
     end: date | None = None
