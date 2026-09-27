@@ -112,3 +112,29 @@ Models, periods, metrics, selection rule and gate are unchanged. At the
 time of this amendment only the models without GDELT had been run
 (development period, pipeline check); no model using GDELT had produced
 any number.
+
+## Amendment 2 (2026-09-27, before any GDELT-based result was produced)
+
+**Change:** GDELT data (Amendment 1 definitions) covers 2022-01 onward
+instead of 2017-01 onward.
+
+**Why:** the daily files total ~115 GB and download at ~13 MB/s here,
+about 2 h 10 min for the full span; from 2022-01 it is ~47 GB, about
+1 h. Decided by the project owner to shorten the wait.
+
+**Consequences, stated in advance:**
+
+- GDELT months in 2020-2021 were already useless: every sample using
+  them falls under the COVID exclusion. The real loss is the pre-COVID
+  training history (targets 2018-04 .. 2020-02) for GR_WG and POOL_WG.
+- With no pre-COVID samples, GR_WG (per country, needs ≥ 12 training
+  samples) first forecasts around mid-2024. Because comparisons use the
+  common sample of all models, the development comparison effectively
+  covers about 2024-06 .. 2025-06 instead of 2023-07 .. 2025-06.
+- Wikipedia models keep their 2016+ history, so the development
+  selection slightly favours them over the GDELT models.
+- On the holdout every GDELT model has 20+ training months per country;
+  the gate test is essentially unaffected.
+
+Models, periods, metrics, selection rule and gate are otherwise
+unchanged. A later robustness check may backfill 2017-2021.

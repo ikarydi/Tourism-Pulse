@@ -30,8 +30,11 @@ from research.nowcast.data import DATA_DIR, USER_AGENT
 
 GKG_URL = "https://data.gdeltproject.org/gkg/{day}.gkg.csv.zip"
 CACHE_DIR = DATA_DIR / "gkg_cache"
-START = date(2017, 1, 1)
-WORKERS = 8
+# PREREGISTRATION.md Amendment 2: GDELT history starts 2022-01. Earlier
+# months would only feed samples the COVID exclusion drops anyway, except
+# 2018-2020 pre-COVID training history, traded away for a ~1 h faster build.
+START = date(2022, 1, 1)
+WORKERS = 14
 
 TOURISM_THEMES = frozenset(
     {"TOURISM", "WB_825_TOURISM", "TAX_FNCACT_TOURIST", "TAX_FNCACT_TOURISTS"}
