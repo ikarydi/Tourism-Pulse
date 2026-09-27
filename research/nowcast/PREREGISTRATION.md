@@ -1,0 +1,84 @@
+# Gate 1 nowcast backtest: pre-registration
+
+Written and committed **before** any model was run on real data. The git
+commit timestamp of this file is the evidence. Anything decided after
+seeing results is marked as such in `results/`.
+
+## Question
+
+Do free, high-frequency open signals (Wikipedia pageviews, GDELT news)
+improve nowcasts of official monthly tourism nights over statistical
+baselines that use official data alone?
+
+## Target and information set
+
+- Target: Eurostat `tour_occ_nim`, nights spent, residents + non-residents,
+  NACE I551-I553, 30 countries (EU27 + NO, IS, CH).
+- Official data is published with a ~3-month lag (at end of September
+  2026 most countries had data through June). So at origin `o` (the
+  last published month) we nowcast `o+1`, `o+2`, `o+3` (horizons
+  h = 1, 2, 3). h = 3 is the current month.
+- Alt data is assumed known through `o+3` (complete months only).
+- Eurostat values are the latest vintage (revisions ignored; applies to
+  every model equally).
+
+## Models
+
+All regressions work on year-over-year log growth `d(t) = log x(t) - log x(t-12)`.
+`dbar_y(o)` is the mean of `d_y` over `o-2..o`. For a signal `s`,
+the "surprise" is `Δs(t) = d_s(t) - dbar_s(o)`.
+
+| id | forecast of y(t), t = o+h |
+|---|---|
+| SN | y(t-12) |
+| SNG | y(t-12) · exp(dbar_y(o)) |
+| AIRLINE | SARIMA(0,1,1)(0,1,1)12 on log y, COVID months set missing |
+| GR | per-country OLS: d_y(t) = a + b·dbar_y(o) |
+| GR_W | GR + c·Δwiki(t) |
+| GR_WG | GR_W + g·Δgdelt_share(t) + k·Δtone(t) |
+| POOL_W | GR_W with slopes and intercept pooled across countries |
+| POOL_WG | GR_WG pooled across countries |
+
+- `wiki` = sum of en country + de country + en capital article views.
+- `gdelt_share` = monthly GDELT article count for "<country> tourism" ÷
+  GDELT corpus total; `tone` = article-weighted mean tone (difference,
+  not log).
+- Regression training samples: every target month `t <= o` with complete
+  features, excluding any sample where `t`, `o-2..o`, or any of those
+  minus 12 months falls in 2020-03 .. 2021-12 (COVID).
+- h is a separate regression per horizon (direct forecasting).
+
+## Periods
+
+- **Development** targets: 2023-07 .. 2025-06. Used to choose the one
+  primary alt-data model.
+- **Holdout** targets: 2025-07 .. 2026-06 (or the latest official month).
+  Run once, after the primary model is fixed and committed.
+
+## Metrics
+
+- MASE with a fixed per-country scale: mean |y(t) - y(t-12)| over
+  2016-01 .. 2019-12. Averaged over h = 1..3 and all target months.
+- Relative MASE = model MASE / SN MASE, per country.
+- 80% interval coverage (regressions: empirical residual quantiles;
+  AIRLINE: model interval).
+- Diebold-Mariano test (Harvey-Leybourne-Newbold correction) per country
+  on h-averaged absolute errors, primary vs SN and primary vs best
+  official-data-only baseline.
+
+## Primary model selection (on development only)
+
+Among GR_W, GR_WG, POOL_W, POOL_WG: the lowest **median relative MASE**
+across countries on the development period.
+
+## Gate (as stated in the Pulse to Product report)
+
+**Pass** if the primary model's relative MASE vs SN is ≤ 0.90 in a
+majority of countries (≥ 16 of 30) on the holdout.
+
+## Stricter scientific check (reported, not gating)
+
+Does the primary model beat the best official-data-only baseline
+(SNG, AIRLINE, GR, chosen on development) in a majority of countries on
+the holdout? If the gate passes but this fails, the alt-data signals are
+not the reason, and the product claim must say so.
