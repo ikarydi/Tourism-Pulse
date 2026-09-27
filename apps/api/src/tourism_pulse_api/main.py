@@ -7,6 +7,7 @@ from tourism_pulse_api.routers.attractions import router as attractions_router
 from tourism_pulse_api.routers.demographics import router as demographics_router
 from tourism_pulse_api.routers.destinations import router as destinations_router
 from tourism_pulse_api.routers.events import router as events_router
+from tourism_pulse_api.routers.explore import router as explore_router
 from tourism_pulse_api.routers.lineage import router as lineage_router
 from tourism_pulse_api.routers.news import router as news_router
 from tourism_pulse_api.routers.observatory import router as observatory_router
@@ -45,6 +46,7 @@ app.include_router(videos_router)
 app.include_router(demographics_router)
 app.include_router(lineage_router)
 app.include_router(observatory_router)
+app.include_router(explore_router)
 app.include_router(pulse_router)
 
 @app.get("/")

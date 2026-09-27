@@ -8,6 +8,7 @@ from tourism_pulse_api.db.models.place import Place
 from tourism_pulse_api.db.models.place_demographics import PlaceDemographics
 from tourism_pulse_api.db.models.pulse_snapshot import PulseSnapshot
 from tourism_pulse_api.db.models.regional_indicator import RegionalIndicator
+from tourism_pulse_api.db.models.saved_view import SavedView
 from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.db.models.source import Source
 from tourism_pulse_api.db.models.source_observation import SourceObservation
@@ -24,6 +25,7 @@ __all__ = [
     "PlaceDemographics",
     "PulseSnapshot",
     "RegionalIndicator",
+    "SavedView",
     "Signal",
     "Source",
     "SourceObservation",
