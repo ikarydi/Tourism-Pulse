@@ -49,7 +49,7 @@ def test_engine_calculates_complete_result() -> None:
     assert 0.0 <= result.pulse.pulse <= 100.0
     assert 0.0 <= result.confidence.score <= 100.0
     assert result.trend.change == 0.0
-    assert result.trend.direction == "stable"
+    assert result.trend.direction == "insufficient_data"
 
 
 def test_engine_calculates_trend() -> None:
@@ -160,3 +160,50 @@ def test_engine_aggregates_multiple_signals_by_reliability() -> None:
     result = engine.calculate(signals=signals)
 
     assert result.pulse.demand == pytest.approx(75.79, abs=0.01)
+
+
+def test_stale_signal_keeps_its_level() -> None:
+    # A lone monthly statistic two half-lives old must still read at its
+    # own level - staleness lowers confidence, not the reading.
+    engine = PulseEngine()
+
+    result = engine.calculate(
+        signals=[
+            SignalInput(
+                dimension="demand",
+                normalized_value=0.6,
+                age_hours=1440,
+                half_life_hours=720,
+                source="government",
+            )
+        ]
+    )
+
+    assert result.pulse.demand == pytest.approx(60.0)
+    assert result.confidence.freshness == pytest.approx(25.0)
+
+
+def test_fresher_signal_outweighs_stale_one_in_same_dimension() -> None:
+    engine = PulseEngine()
+
+    result = engine.calculate(
+        signals=[
+            SignalInput(
+                dimension="demand",
+                normalized_value=0.2,
+                age_hours=0,
+                half_life_hours=24,
+                source="government",
+            ),
+            SignalInput(
+                dimension="demand",
+                normalized_value=0.8,
+                age_hours=24,
+                half_life_hours=24,
+                source="government",
+            ),
+        ]
+    )
+
+    # weights 1.0 and 0.5 -> (0.2 * 1.0 + 0.8 * 0.5) / 1.5 = 0.4
+    assert result.pulse.demand == pytest.approx(40.0)

@@ -64,7 +64,15 @@ class PulseEngine:
             "economic": [],
         }
 
-        dimension_reliabilities: dict[str, list[float]] = {
+        # Each signal's weight within its dimension is freshness *
+        # reliability, so a dimension is the weighted *mean* of its
+        # normalized values: sum(value * weight) / sum(weight). Dividing
+        # by the weights (not just the reliabilities) is what keeps
+        # staleness from dragging the reading itself toward zero - an old
+        # KSH month still says what it said; it just counts for less
+        # against fresher signals, and lowers confidence via
+        # average_freshness below.
+        dimension_weights: dict[str, list[float]] = {
             "demand": [],
             "capacity": [],
             "events": [],
@@ -95,7 +103,7 @@ class PulseEngine:
             )
 
             dimension_values[signal.dimension].append(effective)
-            dimension_reliabilities[signal.dimension].append(reliability)
+            dimension_weights[signal.dimension].append(freshness * reliability)
             reliabilities.append(reliability)
             freshness_values.append(freshness)
 
@@ -106,13 +114,11 @@ class PulseEngine:
                 dimensions[name] = 0.0
                 continue
 
-            reliability_total = sum(
-                dimension_reliabilities[name]
-            )
+            weight_total = sum(dimension_weights[name])
 
             dimensions[name] = (
-                sum(values) / reliability_total
-                if reliability_total
+                sum(values) / weight_total
+                if weight_total
                 else 0.0
             )
 
@@ -146,9 +152,11 @@ class PulseEngine:
         )
 
         if previous_pulse is None:
+            # Spec 6.9: no history is "insufficient data", never "stable" -
+            # the same term pulse.trend_analysis already uses.
             trend = TrendResult(
                 change=0.0,
-                direction="stable",
+                direction="insufficient_data",
             )
         else:
             trend = calculate_trend(

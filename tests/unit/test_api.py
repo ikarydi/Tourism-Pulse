@@ -223,7 +223,7 @@ def test_calculate_place_pulse() -> None:
     assert 0.0 <= pulse["confidence"]["score"] <= 100.0
     assert 0.0 <= pulse["confidence"]["coverage"] <= 100.0
 
-    assert pulse["trend"]["direction"] == "stable"
+    assert pulse["trend"]["direction"] == "insufficient_data"
     assert pulse["trend"]["change"] == 0.0
 
 
@@ -648,7 +648,7 @@ def test_pulse_trend_uses_previous_snapshot() -> None:
     )
 
     assert first_pulse.status_code == 200
-    assert first_pulse.json()["trend"]["direction"] == "stable"
+    assert first_pulse.json()["trend"]["direction"] == "insufficient_data"
     assert first_pulse.json()["trend"]["change"] == 0.0
 
     second_signal = client.post(
