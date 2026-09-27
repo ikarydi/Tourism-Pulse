@@ -34,26 +34,54 @@ HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
 RESULTS_DIR = HERE / "results"
 
-HORIZONS = (1, 2, 3)
 COVID = (pd.Period("2020-03", "M"), pd.Period("2021-12", "M"))
-SCALE_WINDOW = (pd.Period("2016-01", "M"), pd.Period("2019-12", "M"))
-PERIODS = {
-    "dev": (pd.Period("2023-07", "M"), pd.Period("2025-06", "M")),
-    "holdout": (pd.Period("2025-07", "M"), pd.Period("2026-06", "M")),
-}
-BASELINES = ("SN", "SNG", "AIRLINE", "GR")
-ALT_MODELS = ("GR_W", "GR_WG", "POOL_W", "POOL_WG")
-MODELS = BASELINES + ALT_MODELS
 INTERVAL_Q = (0.10, 0.90)
 
-# Regressors per model (all regressions also get an intercept).
-REGRESSORS: dict[str, tuple[str, ...]] = {
-    "GR": ("dbar_y",),
-    "GR_W": ("dbar_y", "dwiki"),
-    "GR_WG": ("dbar_y", "dwiki", "dgdelt", "dtone"),
-    "POOL_W": ("dbar_y", "dwiki"),
-    "POOL_WG": ("dbar_y", "dwiki", "dgdelt", "dtone"),
-}
+
+@dataclass(frozen=True)
+class Study:
+    """Everything that differs between the country and regional studies."""
+
+    title: str
+    unit: str  # plural, e.g. "countries"
+    unit_singular: str
+    n_units: int  # as pre-registered; the gate counts against this
+    horizons: tuple[int, ...]
+    periods: dict[str, tuple[pd.Period, pd.Period]]
+    scale_window: tuple[pd.Period, pd.Period]
+    baselines: tuple[str, ...]  # "SN" first
+    alt_models: tuple[str, ...]
+    # Regressors per regression model (all also get an intercept); a name
+    # starting with POOL is fitted on all units pooled.
+    regressors: dict[str, tuple[str, ...]]
+    results_prefix: str = ""
+
+    @property
+    def models(self) -> tuple[str, ...]:
+        return self.baselines + self.alt_models
+
+
+COUNTRY_STUDY = Study(
+    title="Nowcast backtest",
+    unit="countries",
+    unit_singular="country",
+    n_units=30,
+    horizons=(1, 2, 3),
+    periods={
+        "dev": (pd.Period("2023-07", "M"), pd.Period("2025-06", "M")),
+        "holdout": (pd.Period("2025-07", "M"), pd.Period("2026-06", "M")),
+    },
+    scale_window=(pd.Period("2016-01", "M"), pd.Period("2019-12", "M")),
+    baselines=("SN", "SNG", "AIRLINE", "GR"),
+    alt_models=("GR_W", "GR_WG", "POOL_W", "POOL_WG"),
+    regressors={
+        "GR": ("dbar_y",),
+        "GR_W": ("dbar_y", "dwiki"),
+        "GR_WG": ("dbar_y", "dwiki", "dgdelt", "dtone"),
+        "POOL_W": ("dbar_y", "dwiki"),
+        "POOL_WG": ("dbar_y", "dwiki", "dgdelt", "dtone"),
+    },
+)
 
 
 def in_covid(month: pd.Period) -> bool:
@@ -119,6 +147,8 @@ def feature_table(frame: pd.DataFrame, h: int) -> pd.DataFrame:
     table["target"] = d_y
     table["dbar_y"] = dbar_y.shift(h)
     for column, name in (("wiki", "dwiki"), ("gshare", "dgdelt"), ("tone", "dtone")):
+        if column not in frame:
+            continue
         d_s = growth(frame, column)
         table[name] = d_s - d_s.rolling(3).mean().shift(h)
 
@@ -161,11 +191,13 @@ def regression_forecast(
     )
 
 
-def airline_forecasts(args: tuple[str, pd.Series, list[pd.Period]]) -> dict:
+def airline_forecasts(
+    args: tuple[str, pd.Series, list[pd.Period], tuple[int, ...]],
+) -> tuple[str, dict]:
     """SARIMA(0,1,1)(0,1,1)12 on log y per origin; returns {(o, h): Forecast}."""
     from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-    geo, y, origins = args
+    geo, y, origins, horizons = args
     logged = np.log(y.where(y > 0))
     logged[[in_covid(m) for m in logged.index]] = np.nan
     out = {}
@@ -175,15 +207,19 @@ def airline_forecasts(args: tuple[str, pd.Series, list[pd.Period]]) -> dict:
             continue
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            model = SARIMAX(
-                history.to_timestamp(),
-                order=(0, 1, 1),
-                seasonal_order=(0, 1, 1, 12),
-            ).fit(disp=False)
-            prediction = model.get_forecast(len(HORIZONS))
+            try:
+                model = SARIMAX(
+                    history.to_timestamp(),
+                    order=(0, 1, 1),
+                    seasonal_order=(0, 1, 1, 12),
+                ).fit(disp=False)
+                prediction = model.get_forecast(len(horizons))
+            except (np.linalg.LinAlgError, ValueError):
+                # Too little history for a seasonal fit: no forecast here.
+                continue
             mean = prediction.predicted_mean.to_numpy()
             interval = prediction.conf_int(alpha=0.2).to_numpy()
-        for i, h in enumerate(HORIZONS):
+        for i, h in enumerate(horizons):
             out[(origin, h)] = Forecast(
                 point=math.exp(mean[i]),
                 low=math.exp(interval[i, 0]),
@@ -192,24 +228,24 @@ def airline_forecasts(args: tuple[str, pd.Series, list[pd.Period]]) -> dict:
     return geo, out
 
 
-def run(period: str, gdelt_file: str = "gdelt.csv") -> pd.DataFrame:
-    panel = load_panel(gdelt_file)
-    start, end = PERIODS[period]
+def run(study: Study, period: str, panel: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    horizons = study.horizons
+    start, end = study.periods[period]
     targets = pd.period_range(start, end, freq="M")
-    origins = sorted({t - h for t in targets for h in HORIZONS})
+    origins = sorted({t - h for t in targets for h in horizons})
 
-    features = {(geo, h): feature_table(frame, h) for geo, frame in panel.items() for h in HORIZONS}
+    features = {(geo, h): feature_table(frame, h) for geo, frame in panel.items() for h in horizons}
 
     with ProcessPoolExecutor() as pool:
         airline = dict(
             pool.map(
                 airline_forecasts,
-                [(geo, frame["y"], origins) for geo, frame in panel.items()],
+                [(geo, frame["y"], origins, horizons) for geo, frame in panel.items()],
             )
         )
 
     records = []
-    for h in HORIZONS:
+    for h in horizons:
         pooled = pd.concat([features[(geo, h)].assign(geo=geo) for geo in panel], axis=0)
         pooled = pooled[~pooled["covid"]]
         for t in targets:
@@ -232,7 +268,7 @@ def run(period: str, gdelt_file: str = "gdelt.csv") -> pd.DataFrame:
                 forecasts["SNG"] = (
                     None if pd.isna(dbar) else Forecast(base * math.exp(dbar), math.nan, math.nan)
                 )
-                for model, regressors in REGRESSORS.items():
+                for model, regressors in study.regressors.items():
                     source = pool_train if model.startswith("POOL") else train
                     forecasts[model] = regression_forecast(source, row, regressors, base)
 
@@ -256,7 +292,7 @@ def run(period: str, gdelt_file: str = "gdelt.csv") -> pd.DataFrame:
     scales = {
         geo: frame["y"]
         .diff(12)
-        .abs()[(frame.index >= SCALE_WINDOW[0]) & (frame.index <= SCALE_WINDOW[1])]
+        .abs()[(frame.index >= study.scale_window[0]) & (frame.index <= study.scale_window[1])]
         .mean()
         for geo, frame in panel.items()
     }
@@ -306,6 +342,7 @@ def summarise(errors: pd.DataFrame, models: tuple[str, ...]) -> pd.DataFrame:
 
 
 def write_report(
+    study: Study,
     period: str,
     errors: pd.DataFrame,
     primary: str | None,
@@ -313,29 +350,30 @@ def write_report(
     label: str = "",
 ) -> str:
     RESULTS_DIR.mkdir(exist_ok=True)
-    name = f"{period}{label}"
+    models = study.models
+    unit = study.unit
+    name = f"{study.results_prefix}{period}{label}"
     errors.to_csv(RESULTS_DIR / f"{name}_errors.csv", index=False)
 
     suffix = " (phase 2: pre-COVID GDELT)" if label else ""
-    lines = [f"# Nowcast backtest: {period}{suffix}", ""]
-    start, end = PERIODS[period]
-    lines.append(f"Target months {start} .. {end}, horizons {HORIZONS}.")
+    lines = [f"# {study.title}: {period}{suffix}", ""]
+    start, end = study.periods[period]
+    lines.append(f"Target months {start} .. {end}, horizons {study.horizons}.")
     lines.append("")
 
     # 1. All models on the common sample (country x target x h that every
     # model could forecast - GDELT models need 2018+ history).
-    mase = summarise(errors, MODELS)
+    mase = summarise(errors, models)
     relative = mase.div(mase["SN"], axis=0)
     mase.to_csv(RESULTS_DIR / f"{name}_mase.csv")
     lines += [
-        "## MASE by model (common sample, all countries)",
+        f"## MASE by model (common sample, all {unit})",
         "",
-        "| model | median MASE | median rel. to SN | countries ≤ 0.90×SN | "
-        "mean APE | 80% coverage |",
+        f"| model | median MASE | median rel. to SN | {unit} ≤ 0.90×SN | mean APE | 80% coverage |",
         "|---|---|---|---|---|---|",
     ]
-    sample = common_sample(errors, MODELS)
-    for model in MODELS:
+    sample = common_sample(errors, models)
+    for model in models:
         model_rows = sample[sample["model"] == model]
         coverage = model_rows["covered"].dropna()
         coverage_text = f"{coverage.mean():.0%}" if len(coverage) else "n/a"
@@ -351,17 +389,17 @@ def write_report(
     lines += [
         "## Median relative MASE vs SN, by horizon",
         "",
-        "| h | " + " | ".join(MODELS) + " |",
-        "|---|" + "---|" * len(MODELS),
+        "| h | " + " | ".join(models) + " |",
+        "|---|" + "---|" * len(models),
     ]
-    for h in HORIZONS:
+    for h in study.horizons:
         rel_h = by_h.loc[h].div(by_h.loc[h]["SN"], axis=0).median()
-        lines.append(f"| {h} | " + " | ".join(f"{rel_h[m]:.3f}" for m in MODELS) + " |")
+        lines.append(f"| {h} | " + " | ".join(f"{rel_h[m]:.3f}" for m in models) + " |")
     lines.append("")
 
     if period == "dev":
-        alt_median = relative[list(ALT_MODELS)].median()
-        base_median = relative[list(BASELINES[1:])].median()
+        alt_median = relative[list(study.alt_models)].median()
+        base_median = relative[list(study.baselines[1:])].median()
         lines += [
             "## Selection (pre-registered rule)",
             "",
@@ -386,13 +424,15 @@ def write_report(
                     "geo": geo,
                     "rel_sn": prim.mean() / sn.mean(),
                     "rel_base": prim.mean() / base.mean(),
-                    "p_vs_sn": dm_test(prim, sn),
-                    "p_vs_base": dm_test(prim, base),
+                    "p_vs_sn": dm_test(prim, sn, h=max(study.horizons)),
+                    "p_vs_base": dm_test(prim, base, h=max(study.horizons)),
                 }
             )
         verdict = pd.DataFrame(rows).set_index("geo")
         verdict.to_csv(RESULTS_DIR / f"{name}_verdict.csv")
-        n = len(verdict)
+        # Counted against the pre-registered number of units: a unit with
+        # no holdout forecasts counts as not passing.
+        n = study.n_units
         beat_sn = int((verdict["rel_sn"] <= 0.90).sum())
         beat_base = int((verdict["rel_base"] < 1.0).sum())
         significant_sn = int(((verdict["p_vs_sn"] < 0.1) & (verdict["rel_sn"] < 1)).sum())
@@ -400,9 +440,9 @@ def write_report(
         lines += [
             f"## Gate: {primary} vs SN and vs {baseline}",
             "",
-            f"- Countries with rel. MASE vs SN ≤ 0.90: **{beat_sn}/{n}** "
+            f"- {unit.capitalize()} with rel. MASE vs SN ≤ 0.90: **{beat_sn}/{n}** "
             f"(pass needs ≥ {n // 2 + 1}) → **{'PASS' if beat_sn > n / 2 else 'FAIL'}**",
-            f"- Countries beating {baseline}: **{beat_base}/{n}** "
+            f"- {unit.capitalize()} beating {baseline}: **{beat_base}/{n}** "
             f"→ stricter check **{'PASS' if beat_base > n / 2 else 'FAIL'}**",
             f"- DM p < 0.10 better than SN: {significant_sn}; "
             f"better than {baseline}: {significant_base}",
@@ -422,13 +462,13 @@ def write_report(
         lines.append("")
 
     lines += [
-        "## Per-country MASE (common sample)",
+        f"## Per-{study.unit_singular} MASE (common sample)",
         "",
-        "| geo | " + " | ".join(MODELS) + " |",
-        "|---|" + "---|" * len(MODELS),
+        "| geo | " + " | ".join(models) + " |",
+        "|---|" + "---|" * len(models),
     ]
     for geo, row in mase.iterrows():
-        lines.append(f"| {geo} | " + " | ".join(f"{row[m]:.3f}" for m in MODELS) + " |")
+        lines.append(f"| {geo} | " + " | ".join(f"{row[m]:.3f}" for m in models) + " |")
 
     report = "\n".join(lines) + "\n"
     (RESULTS_DIR / f"{name}.md").write_text(report)
@@ -437,9 +477,10 @@ def write_report(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--period", choices=sorted(PERIODS), required=True)
-    parser.add_argument("--primary", choices=ALT_MODELS)
-    parser.add_argument("--baseline", choices=BASELINES[1:])
+    study = COUNTRY_STUDY
+    parser.add_argument("--period", choices=sorted(study.periods), required=True)
+    parser.add_argument("--primary", choices=study.alt_models)
+    parser.add_argument("--baseline", choices=study.baselines[1:])
     parser.add_argument(
         "--phase",
         choices=("1", "2"),
@@ -452,8 +493,8 @@ def main() -> None:
         parser.error("holdout requires --primary and --baseline chosen on dev")
 
     gdelt_file, label = ("gdelt_full.csv", "_phase2") if args.phase == "2" else ("gdelt.csv", "")
-    errors = run(args.period, gdelt_file)
-    print(write_report(args.period, errors, args.primary, args.baseline, label))
+    errors = run(study, args.period, load_panel(gdelt_file))
+    print(write_report(study, args.period, errors, args.primary, args.baseline, label))
 
 
 if __name__ == "__main__":

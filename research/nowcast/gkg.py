@@ -96,11 +96,8 @@ def summarise_day(text: str) -> dict:
     return {"corpus": corpus, "articles": articles, "tone_x_articles": tone_x_articles}
 
 
-def fetch_day(day: date) -> tuple[date, dict | None]:
-    cache = CACHE_DIR / f"{day:%Y%m%d}.json"
-    if cache.exists():
-        return day, json.loads(cache.read_text())
-
+def download_day(day: date) -> str | None:
+    """One day's GKG file as text, or None when GDELT has no file for it."""
     request = urllib.request.Request(
         GKG_URL.format(day=f"{day:%Y%m%d}"), headers={"User-Agent": USER_AGENT}
     )
@@ -111,9 +108,8 @@ def fetch_day(day: date) -> tuple[date, dict | None]:
             break
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
-                # GDELT has occasional missing days; record the gap.
-                cache.write_text("null")
-                return day, None
+                # GDELT has occasional missing days.
+                return None
             if attempt == 4:
                 raise
         except (urllib.error.URLError, TimeoutError):
@@ -122,9 +118,16 @@ def fetch_day(day: date) -> tuple[date, dict | None]:
         time.sleep(2**attempt)
 
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        text = archive.read(archive.namelist()[0]).decode("utf-8", errors="replace")
+        return archive.read(archive.namelist()[0]).decode("utf-8", errors="replace")
 
-    summary = summarise_day(text)
+
+def fetch_day(day: date) -> tuple[date, dict | None]:
+    cache = CACHE_DIR / f"{day:%Y%m%d}.json"
+    if cache.exists():
+        return day, json.loads(cache.read_text())
+
+    text = download_day(day)
+    summary = None if text is None else summarise_day(text)
     cache.write_text(json.dumps(summary))
     return day, summary
 
