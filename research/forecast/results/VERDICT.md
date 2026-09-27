@@ -75,3 +75,22 @@ in `holdout.md`.
 - Publish it as a seasonal outlook, not as "beats last year".
 - Store every forecast with its issue date, and score it when Eurostat
   publishes the month.
+
+## Addendum, 2026-09-27 (after the verdict; changes nothing above)
+
+- **Production matches the research.** The app's implementation
+  (`tourism_pulse_api.forecasting`), refitted on the app's own series for
+  the 27 EU countries, reproduces the holdout: mean absolute percentage
+  error within 0.1 points of POOL_GR_WG at every horizon (4.56% vs 4.49%
+  at h = 1, 5.27% vs 5.26% at h = 12), and 81.6% interval coverage against
+  81.4%. Differences: 27 instead of 30 countries, and the app's Wikipedia
+  total is the English and German country articles (the research also
+  included the capital's English article).
+- **Wikipedia's own traffic is falling.** Across all 89 curated places, the
+  median year-on-year change in monthly views has been between −3% and
+  −22% every month since May 2024 (−15% in August 2026). The holdout
+  already sits inside this decline and attention still helped, because
+  the pooled model reads differences between countries rather than the
+  common fall. But a faster or uneven decline could erode the edge, and
+  the live track record is where that would show. The app's attention
+  insights compare each place with the median place for the same reason.
