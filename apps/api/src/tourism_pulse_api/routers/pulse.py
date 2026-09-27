@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from functools import partial
+from functools import cache, partial
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -80,14 +80,19 @@ def calculate_place_pulse(
 
     now = datetime.now(UTC)
 
-    seasonal_signals_by_type: dict[str, list[Signal]] = {}
+    # Grouped by (type, calendar month): a seasonal value is only ever
+    # compared with the same month in earlier years, and decades of monthly
+    # history make an all-months scan per value quadratic.
+    seasonal_signals_by_type: dict[tuple[str, int], list[Signal]] = {}
     other_signals = []
 
     for signal in signals:
         signal_type = signal.signal_type.strip().lower()
 
         if signal_type in SEASONAL_SIGNAL_TYPES:
-            seasonal_signals_by_type.setdefault(signal_type, []).append(signal)
+            seasonal_signals_by_type.setdefault(
+                (signal_type, signal.observed_at.month), []
+            ).append(signal)
         elif signal_type in SIGNAL_NORMALIZERS:
             other_signals.append(signal)
         # Anything else is a raw-only/archival signal type (e.g. the raw
@@ -105,7 +110,7 @@ def calculate_place_pulse(
     processed_seasonal_signals = [
         process_seasonal_signal(
             signal,
-            history=seasonal_signals_by_type[signal.signal_type.strip().lower()],
+            history=signals_of_type,
             now=now,
         )
         for signals_of_type in seasonal_signals_by_type.values()
@@ -153,7 +158,8 @@ def calculate_place_pulse(
     )
 
     engine = PulseEngine(
-        reliability_lookup=partial(get_registry_source_reliability, db),
+        # One registry query per source, not per signal.
+        reliability_lookup=cache(partial(get_registry_source_reliability, db)),
     )
     result = engine.calculate(
         signals=processed_signals,

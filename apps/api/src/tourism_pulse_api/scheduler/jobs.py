@@ -15,6 +15,11 @@ country scoping comes from `Destination.country_code`. A place missing
 what an adapter needs (no coordinates for a lat/lon-driven source, a
 name that isn't one of KSH's supported tourism areas, no country code)
 is skipped for that adapter, not guessed at.
+
+Only curated places (destinations and countries) get live adapters. The
+EU-wide regions, areas and cities are official-statistics places, loaded in
+bulk by eurostat_bulk; scheduling every live source for ~2,000 of them would
+spend API quotas on places that have no Pulse.
 """
 
 from collections.abc import Callable
@@ -51,10 +56,21 @@ class ScheduledAdapter:
     interval_minutes: int
 
 
+CURATED_PLACE_TYPES = ("destination", "country")
+
+
+def _curated_places(db: Session) -> list[Place]:
+    return db.query(Place).filter(Place.place_type.in_(CURATED_PLACE_TYPES)).all()
+
+
 def _places_with_coordinates(db: Session) -> list[Place]:
     return (
         db.query(Place)
-        .filter(Place.latitude.isnot(None), Place.longitude.isnot(None))
+        .filter(
+            Place.place_type.in_(CURATED_PLACE_TYPES),
+            Place.latitude.isnot(None),
+            Place.longitude.isnot(None),
+        )
         .all()
     )
 
@@ -119,7 +135,7 @@ def build_argv_opensky(db: Session) -> list[list[str]]:
 def build_argv_gdacs(db: Session) -> list[list[str]]:
     return [
         ["--place-id", str(place.id), "--country", place.destination.country_code]
-        for place in db.query(Place).all()
+        for place in _curated_places(db)
         if place.destination.country_code
     ]
 
@@ -130,21 +146,21 @@ def build_argv_gdacs(db: Session) -> list[list[str]]:
 def build_argv_wikipedia(db: Session) -> list[list[str]]:
     return [
         ["--place-id", str(place.id), "--article", place.name]
-        for place in db.query(Place).all()
+        for place in _curated_places(db)
     ]
 
 
 def build_argv_youtube(db: Session) -> list[list[str]]:
     return [
         ["--place-id", str(place.id), "--query", f"{place.name} travel guide"]
-        for place in db.query(Place).all()
+        for place in _curated_places(db)
     ]
 
 
 def build_argv_gdelt(db: Session) -> list[list[str]]:
     return [
         ["--place-id", str(place.id), "--query", f"{place.name} tourism", "--mode", "mentions"]
-        for place in db.query(Place).all()
+        for place in _curated_places(db)
     ]
 
 
@@ -158,7 +174,7 @@ def build_argv_events(db: Session) -> list[list[str]]:
             "--city", place.name,
             "--country-code", place.destination.country_code,
         ]
-        for place in db.query(Place).all()
+        for place in _curated_places(db)
         if place.place_type != "country" and place.destination.country_code
     ]
 
@@ -168,7 +184,7 @@ def build_argv_events(db: Session) -> list[list[str]]:
 
 def build_argv_ksh(db: Session) -> list[list[str]]:
     argv = []
-    for place in db.query(Place).all():
+    for place in _curated_places(db):
         if place.destination.country_code != "HU":
             continue
         region = place.name.strip().lower()
