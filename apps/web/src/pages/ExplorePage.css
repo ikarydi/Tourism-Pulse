@@ -355,3 +355,9 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+
+.place-list-note {
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--text-faint);
+}

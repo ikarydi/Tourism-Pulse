@@ -15,6 +15,7 @@ import { ObservatoryPage } from './pages/ObservatoryPage'
 import { OverviewPage } from './pages/OverviewPage'
 import type { Catalog, SavedView } from './types/explore'
 import type { Place } from './types/place'
+import { isCurated, placeSubtitle } from './lib/places'
 
 const HEALTH_POLL_MS = 30_000
 
@@ -80,6 +81,9 @@ function App() {
     () => places.find((place) => place.id === selectedPlaceId) ?? null,
     [places, selectedPlaceId],
   )
+  // The Pulse and live signals exist only for curated places; the map and
+  // destinations table load a Pulse per place, so they get these ~90.
+  const curatedPlaces = useMemo(() => places.filter(isCurated), [places])
 
   const openExplore = useCallback((next: ExploreDraft | null) => {
     setDraft(next)
@@ -104,10 +108,8 @@ function App() {
   }
 
   const nav = NAV.find((item) => item.view === view) ?? NAV[0]
-  const title =
-    view === 'detail' && selectedPlace
-      ? `${selectedPlace.name}${selectedPlace.country_code ? `, ${selectedPlace.country_code}` : ''}`
-      : nav.label
+  const title = view === 'detail' && selectedPlace ? selectedPlace.name : nav.label
+  const description = view === 'detail' && selectedPlace ? placeSubtitle(selectedPlace) : nav.description
 
   return (
     <div className="app-shell">
@@ -122,25 +124,13 @@ function App() {
         <header className="app-topbar">
           <div className="app-topbar-title">
             <h1>{title}</h1>
-            <p>{nav.description}</p>
+            <p>{description}</p>
           </div>
           <div className="app-topbar-actions">
             {view === 'detail' && (
-              <select
-                className="field place-select"
-                value={selectedPlace?.id ?? ''}
-                onChange={(event) => openPlace(Number(event.target.value))}
-                disabled={loadingPlaces || !places.length}
-                aria-label="Destination"
-              >
-                {places.map((place) => (
-                  <option key={place.id} value={place.id}>
-                    {place.name}
-                    {place.country_code ? ` · ${place.country_code}` : ''}
-                    {place.place_type === 'country' ? ' (national)' : ''}
-                  </option>
-                ))}
-              </select>
+              <button type="button" className="button" onClick={() => setPaletteOpen(true)}>
+                Change place <kbd>Ctrl K</kbd>
+              </button>
             )}
             <span
               className={`status-pill${apiOnline === false ? ' offline' : ''}`}
@@ -187,28 +177,37 @@ function App() {
           )}
 
           {!loadingPlaces && !!places.length && view === 'destinations' && (
-            <OverviewPage places={places} onSelectPlace={(placeId) => openPlace(placeId)} />
+            <OverviewPage places={curatedPlaces} onSelectPlace={(placeId) => openPlace(placeId)} />
           )}
 
           {!loadingPlaces && !!places.length && view === 'map' && (
             <MapPage
-              places={places}
-              selectedPlace={selectedPlace}
+              places={curatedPlaces}
               onSelectPlace={(placeId) => openPlace(placeId, { keepView: true })}
+              onOpenPlace={(placeId) => openPlace(placeId)}
             />
           )}
 
           {!loadingPlaces && !!places.length && view === 'observatory' && (
-            <ObservatoryPage onSelectPlace={(placeId) => openPlace(placeId)} />
+            <ObservatoryPage places={places} onSelectPlace={(placeId) => openPlace(placeId)} />
           )}
 
-          {!loadingPlaces && view === 'detail' && selectedPlace && <DetailPage place={selectedPlace} />}
+          {!loadingPlaces && view === 'detail' && selectedPlace && (
+            <DetailPage
+              key={selectedPlace.id}
+              place={selectedPlace}
+              places={places}
+              catalog={catalog}
+              onOpenExplore={openExplore}
+              onSelectPlace={(placeId) => openPlace(placeId)}
+            />
+          )}
         </section>
       </main>
 
       {paletteOpen && (
         <CommandPalette
-        places={catalog?.places ?? []}
+        places={places}
         views={savedViews}
         detailEnabled={Boolean(selectedPlace)}
         onClose={() => setPaletteOpen(false)}

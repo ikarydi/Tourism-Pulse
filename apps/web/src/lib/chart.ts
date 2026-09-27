@@ -1,4 +1,5 @@
 import type { ChartSpec, ChartType, Collapse, Metric, PlaceRef, QueryResult, QueryRow, QuerySpec } from '../types/explore'
+import { placeSubtitle } from './places'
 
 // Categorical palette from the design tokens, extended for many series.
 export const SERIES_COLORS = [
@@ -52,6 +53,10 @@ export function recommendChart(metrics: Metric[], placeCount: number): ChartSpec
   if (!metrics.length) return DEFAULT_CHART
   if (metrics.length >= 2 && (placeCount > 8 || allStatic)) {
     return { type: 'scatter', x: 'place', collapse, color: null }
+  }
+  // Hundreds of regions or cities: a map reads better than any list.
+  if (metrics.length === 1 && placeCount > 60) {
+    return { type: 'map', x: 'place', collapse, color: null }
   }
   if (allStatic || (annualOnly && placeCount > 8)) {
     return { type: 'bar', x: 'place', collapse, color: null }
@@ -146,8 +151,31 @@ export function axisLabel(metric: Metric): string {
   return `${metric.label} (${unit})`
 }
 
+const labelCache = new WeakMap<PlaceRef[], Map<number, string>>()
+
+/** Chart label for a place. Names shared within one result (Barcelona the
+ * destination, the NUTS 3 area and the city) get their type added so their
+ * bars and lines stay apart. */
 export function placeName(places: PlaceRef[], id: number): string {
-  return places.find((place) => place.id === id)?.name ?? `Place ${id}`
+  let labels = labelCache.get(places)
+  if (!labels) {
+    const counts = new Map<string, number>()
+    for (const place of places) counts.set(place.name, (counts.get(place.name) ?? 0) + 1)
+    labels = new Map(
+      places.map((place) => [
+        place.id,
+        (counts.get(place.name) ?? 0) > 1 ? `${place.name} (${placeSubtitle(place)})` : place.name,
+      ]),
+    )
+    labelCache.set(places, labels)
+  }
+  return labels.get(id) ?? `Place ${id}`
+}
+
+/** Left margin that fits the longest category label, within reason. */
+export function labelMargin(labels: string[], min = 80, max = 220): number {
+  const longest = labels.reduce((most, label) => Math.max(most, label.length), 0)
+  return Math.round(Math.min(max, Math.max(min, longest * 6.3 + 14)))
 }
 
 export function metricById(result: QueryResult, id: string): Metric | undefined {

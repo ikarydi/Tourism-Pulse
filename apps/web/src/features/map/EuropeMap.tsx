@@ -7,10 +7,14 @@ import { formatChange, scoreStatus } from '../../lib/format'
 import type { Place } from '../../types/place'
 import type { Pulse } from '../../types/pulse'
 import './EuropeMap.css'
+import { getObservatoryRanking } from '../../api/observatory'
+import type { ObservatoryRanking } from '../../types/observatory'
 import { LandBasemap } from './LandBasemap'
+import { RegionLayer } from './RegionLayer'
+import { loadShapes, REGION_MEASURES, REGION_RAMP, type RegionMeasure } from './regionShapes'
 
 // Centered/zoomed to frame continental Europe at a glance.
-const EUROPE_CENTER: [number, number] = [54, 15]
+const EUROPE_CENTER: [number, number] = [52.5, 14]
 const EUROPE_ZOOM = 4
 // The outline basemap is 1:50m; past this zoom its coastlines look coarse.
 const MAX_ZOOM = 8
@@ -117,7 +121,7 @@ function MapInfoPanel({
             })}
           </div>
           <button type="button" className="map-info-detail-link" onClick={onJumpToDetail}>
-            Full detail below &darr;
+            Open destination page &rarr;
           </button>
         </>
       )}
@@ -172,11 +176,12 @@ function TrendingPanel({ movers, onSelect }: { movers: { up: Mover[]; down: Move
 export function EuropeMap({
   places,
   onSelectPlace,
-  onJumpToDetail,
+  onOpenPlace,
 }: {
   places: Place[]
   onSelectPlace: (placeId: number) => void
-  onJumpToDetail: () => void
+  // Navigate to a place's page (markers' info panel, clicked regions).
+  onOpenPlace: (placeId: number) => void
 }) {
   const located = places.filter(isLocated)
   const unlocated = places.filter((place) => !isLocated(place) && place.place_type !== 'country').length
@@ -184,9 +189,30 @@ export function EuropeMap({
   const [pulses, setPulses] = useState<Record<number, Pulse | null>>({})
   const [pulsesLoading, setPulsesLoading] = useState(located.length > 0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [measure, setMeasure] = useState<RegionMeasure | 'off'>('score')
+  const [level, setLevel] = useState<2 | 3>(2)
+  const [ranking, setRanking] = useState<ObservatoryRanking[] | null>(null)
+
+  // The regional layer's values: one bulk ranking of every place.
+  useEffect(() => {
+    if (measure === 'off' || ranking) return
+    let cancelled = false
+    // Fetch the shapes alongside the values, not after them.
+    void loadShapes(level)
+    getObservatoryRanking()
+      .then((rows) => !cancelled && setRanking(rows))
+      .catch(() => !cancelled && setRanking([]))
+    return () => {
+      cancelled = true
+    }
+  }, [measure, ranking, level])
+
+  // The regional layer goes first: it is the bulk of the map, and ~90 Pulse
+  // calculations sharing the API with it would hold it back for seconds.
+  const regionsSettled = measure === 'off' || ranking !== null
 
   useEffect(() => {
-    if (!located.length) return
+    if (!located.length || !regionsSettled) return
 
     let cancelled = false
 
@@ -216,7 +242,7 @@ export function EuropeMap({
     // from it each render - `located` is recomputed fresh from `places` on
     // every run of this effect, so there's no stale-closure risk here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [places])
+  }, [places, regionsSettled])
 
   const selectedPlace = located.find((place) => place.id === selectedId) ?? null
 
@@ -237,7 +263,7 @@ export function EuropeMap({
               pulse={pulses[selectedPlace.id] ?? null}
               loading={pulsesLoading && !(selectedPlace.id in pulses)}
               onClose={() => setSelectedId(null)}
-              onJumpToDetail={onJumpToDetail}
+              onJumpToDetail={() => onOpenPlace(selectedPlace.id)}
             />
           )}
           <TrendingPanel
@@ -247,6 +273,50 @@ export function EuropeMap({
               onSelectPlace(placeId)
             }}
           />
+          <div className="map-layer-panel">
+            <label htmlFor="map-layer-measure" className="mini-label">
+              Regions coloured by
+            </label>
+            <select
+              id="map-layer-measure"
+              className="field"
+              value={measure}
+              onChange={(event) => setMeasure(event.target.value as RegionMeasure | 'off')}
+            >
+              {REGION_MEASURES.map((item) => (
+                <option key={item.key} value={item.key}>
+                  {item.label}
+                </option>
+              ))}
+              <option value="off">Nothing (markers only)</option>
+            </select>
+            {measure !== 'off' && (
+              <>
+                <div className="segmented" role="radiogroup" aria-label="Region level">
+                  {([2, 3] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={level === value}
+                      className={level === value ? 'active' : ''}
+                      onClick={() => setLevel(value)}
+                    >
+                      {value === 2 ? 'NUTS 2 regions' : 'NUTS 3 areas'}
+                    </button>
+                  ))}
+                </div>
+                <div className="map-layer-legend">
+                  <span>Lower</span>
+                  <span className="map-layer-ramp" style={{ background: `linear-gradient(90deg, ${REGION_RAMP.join(', ')})` }} />
+                  <span>Higher</span>
+                </div>
+                <p className="map-layer-note">
+                  {ranking ? 'Percentile among European regions at the same level. Click a region to open it.' : 'Loading regions...'}
+                </p>
+              </>
+            )}
+          </div>
           <div className="map-legend">
             <span>
               <i style={{ background: 'var(--status-good)' }} /> Trending up
@@ -270,6 +340,9 @@ export function EuropeMap({
             className="europe-map"
           >
             <LandBasemap />
+            {measure !== 'off' && ranking && (
+              <RegionLayer level={level} measure={measure} ranking={ranking} onSelect={onOpenPlace} />
+            )}
             {located.map((place) => {
               const pulse = pulses[place.id] ?? null
               const isCountry = place.place_type === 'country'
@@ -300,12 +373,11 @@ export function EuropeMap({
           </MapContainer>
         </div>
       </div>
-      {unlocated > 0 && (
-        <p className="map-footnote">
-          {unlocated} destination{unlocated === 1 ? '' : 's'} not yet located on the map. Marker size reflects pulse
-          strength, color reflects trend direction.
-        </p>
-      )}
+      <p className="map-footnote">
+        Markers are curated destinations and countries: size shows Pulse strength, colour its trend. Regions show
+        official Eurostat indicators.
+        {unlocated > 0 && ` ${unlocated} destination${unlocated === 1 ? '' : 's'} not yet located.`}
+      </p>
     </div>
   )
 }

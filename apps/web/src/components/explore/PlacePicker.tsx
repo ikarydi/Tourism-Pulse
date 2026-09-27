@@ -1,13 +1,22 @@
 import { useMemo, useState } from 'react'
+import { PLACE_TYPE_LABELS, placeSubtitle } from '../../lib/places'
 import type { PlaceRef, QuerySpec } from '../../types/explore'
 
-type Scope = 'destination' | 'country' | 'all' | 'custom'
+type Scope = NonNullable<QuerySpec['place_type']> | 'all' | 'custom'
 
 const CHIP_LIMIT = 8
+const MATCH_LIMIT = 100
+const SCOPES: Scope[] = ['destination', 'city', 'region', 'area', 'country', 'all', 'custom']
 
 function scopeOf(query: QuerySpec): Scope {
   if (query.places) return 'custom'
   return query.place_type ?? 'all'
+}
+
+function scopeLabel(scope: Scope, counts: Record<string, number>, total: number): string {
+  if (scope === 'all') return `Everything (${total})`
+  if (scope === 'custom') return 'Pick places...'
+  return `${PLACE_TYPE_LABELS[scope]?.many ?? scope} (${counts[scope] ?? 0})`
 }
 
 /** Which places a query covers: a whole scope, or a hand-picked set. */
@@ -24,10 +33,16 @@ export function PlacePicker({
   const [showAll, setShowAll] = useState(false)
   const scope = scopeOf(query)
   const selected = useMemo(() => new Set(query.places ?? []), [query.places])
-  const matches = places.filter((place) => place.name.toLowerCase().includes(search.trim().toLowerCase()))
+  const counts = useMemo(() => {
+    const byType: Record<string, number> = {}
+    for (const place of places) byType[place.place_type] = (byType[place.place_type] ?? 0) + 1
+    return byType
+  }, [places])
+  const needle = search.trim().toLowerCase()
+  const matches = needle ? places.filter((place) => place.name.toLowerCase().includes(needle)) : []
 
   function setScope(next: Scope) {
-    if (next === 'custom') onChange({ places: [...selected].length ? [...selected] : [], place_type: null })
+    if (next === 'custom') onChange({ places: [...selected], place_type: null })
     else onChange({ places: null, place_type: next === 'all' ? null : next })
   }
 
@@ -40,27 +55,18 @@ export function PlacePicker({
 
   return (
     <div className="place-picker">
-      <div className="segmented" role="radiogroup" aria-label="Places">
-        {(
-          [
-            ['destination', 'Cities'],
-            ['country', 'Countries'],
-            ['all', 'All'],
-            ['custom', 'Pick'],
-          ] as [Scope, string][]
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={scope === value}
-            className={scope === value ? 'active' : ''}
-            onClick={() => setScope(value)}
-          >
-            {label}
-          </button>
+      <select
+        className="field"
+        value={scope}
+        onChange={(event) => setScope(event.target.value as Scope)}
+        aria-label="Which places"
+      >
+        {SCOPES.filter((item) => item === 'all' || item === 'custom' || counts[item]).map((item) => (
+          <option key={item} value={item}>
+            {scopeLabel(item, counts, places.length)}
+          </option>
         ))}
-      </div>
+      </select>
 
       {scope === 'custom' && (
         <>
@@ -77,11 +83,7 @@ export function PlacePicker({
                   {showAll ? 'Show fewer' : `+${selected.size - CHIP_LIMIT} more`}
                 </button>
               )}
-              <button
-                type="button"
-                className="chip chip-more"
-                onClick={() => onChange({ places: [], place_type: null })}
-              >
+              <button type="button" className="chip chip-more" onClick={() => onChange({ places: [], place_type: null })}>
                 Clear
               </button>
             </div>
@@ -89,22 +91,28 @@ export function PlacePicker({
           <input
             className="field"
             type="search"
-            placeholder="Search places"
+            placeholder={`Search ${places.length.toLocaleString()} places`}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             aria-label="Search places"
           />
-          <ul className="place-list">
-            {matches.map((place) => (
-              <li key={place.id}>
-                <label>
-                  <input type="checkbox" checked={selected.has(place.id)} onChange={() => toggle(place.id)} />
-                  <span>{place.name}</span>
-                  <em>{place.place_type === 'country' ? 'country' : place.country_code}</em>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {needle && (
+            <ul className="place-list">
+              {matches.slice(0, MATCH_LIMIT).map((place) => (
+                <li key={place.id}>
+                  <label>
+                    <input type="checkbox" checked={selected.has(place.id)} onChange={() => toggle(place.id)} />
+                    <span>{place.name}</span>
+                    <em>{placeSubtitle(place)}</em>
+                  </label>
+                </li>
+              ))}
+              {matches.length === 0 && <li className="place-list-note">No places match.</li>}
+              {matches.length > MATCH_LIMIT && (
+                <li className="place-list-note">{matches.length - MATCH_LIMIT} more; refine the search.</li>
+              )}
+            </ul>
+          )}
         </>
       )}
     </div>

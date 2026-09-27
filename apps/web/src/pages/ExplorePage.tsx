@@ -66,13 +66,7 @@ export function ExplorePage({
   const placeCount = useMemo(() => {
     if (!catalog) return 0
     if (query.places) return query.places.length
-    return catalog.places.filter((place) =>
-      query.place_type === 'country'
-        ? place.place_type === 'country'
-        : query.place_type === 'destination'
-          ? place.place_type !== 'country'
-          : true,
-    ).length
+    return catalog.places.filter((place) => !query.place_type || place.place_type === query.place_type).length
   }, [catalog, query.places, query.place_type])
   const suggestion = useMemo(() => recommendChart(metrics, placeCount), [metrics, placeCount])
   const shownChart = chartTouched ? chart : suggestion

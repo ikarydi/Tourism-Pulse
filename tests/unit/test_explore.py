@@ -79,6 +79,8 @@ def test_catalog_lists_fixed_metrics_and_stored_signal_types() -> None:
     assert "pulse.pulse" in catalog
     assert "observatory.str_share" in catalog
     assert "signal.explore_test_signal" in catalog
+    # Signal metrics name the publisher readers know, not the storage table.
+    assert catalog["signal.explore_test_signal"].source == "OpenStreetMap"
     public = catalog["pulse.pulse"].public()
     assert "kind" not in public and "key" not in public
 

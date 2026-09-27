@@ -466,3 +466,49 @@ def test_run_query_with_region_scope_reads_indicators() -> None:
     finally:
         db.close()
     assert all(place.place_type == "region" for place in result.places)
+
+
+def test_list_all_places_includes_type_country_and_codes() -> None:
+    place_id = _country("BG", "Bulgaria test")
+
+    rows = client.get("/places").json()
+
+    row = next(item for item in rows if item["id"] == place_id)
+    assert row["place_type"] == "country"
+    assert row["country_code"] == "BG"
+    assert row["nuts_code"] == "BG"
+
+
+def test_pulse_compares_monthly_nights_with_the_same_month_of_earlier_years() -> None:
+    """Decades of monthly history are grouped by calendar month before the
+    seasonal baseline is taken; each July still sees every earlier July."""
+    db = SessionLocal()
+    try:
+        destination = Destination(country_code="ZS", name="Seasonal test")
+        db.add(destination)
+        db.flush()
+        place = Place(destination_id=destination.id, name="Seasonal test", place_type="country")
+        db.add(place)
+        db.flush()
+        for year, july, january in ((2023, 100.0, 50.0), (2024, 100.0, 50.0), (2025, 200.0, 50.0)):
+            for month, value in ((7, july), (1, january)):
+                db.add(
+                    Signal(
+                        place_id=place.id,
+                        signal_type="tourism_nights",
+                        value=value,
+                        unit="nights",
+                        observed_at=datetime(year, month, 28, tzinfo=UTC),
+                        source="eurostat",
+                    )
+                )
+        db.commit()
+        place_id = place.id
+    finally:
+        db.close()
+
+    response = TestClient(app).get(f"/places/{place_id}/pulse?persist=false")
+
+    # Only seasonal signals: a Pulse exists only if the baselines were found.
+    assert response.status_code == 200
+    assert response.json()["pulse"] > 0

@@ -3,6 +3,8 @@ import { formatCompactNumber, formatNumber } from '../lib/format'
 import type { PlaceDemographics } from '../types/demographics'
 import './DemographicsCard.css'
 
+const BAR_YEARS = 12
+
 export function DemographicsCard({
   demographics,
   visitorPressureSignal,
@@ -14,6 +16,8 @@ export function DemographicsCard({
   const latest = sorted[sorted.length - 1]
   const earliest = sorted[0]
   const maxPopulation = Math.max(...sorted.map((row) => row.population), 1)
+  // Decades of Eurostat history: the bars show the recent years, the note keeps the long view.
+  const recent = sorted.slice(-BAR_YEARS)
 
   // The pressure signal is derived once (population x tourism volume) and
   // can outlive - or exist independently of - the raw population rows this
@@ -53,7 +57,7 @@ export function DemographicsCard({
 
       {!!sorted.length && (
         <div className="demographics-bars">
-          {sorted.map((row) => (
+          {recent.map((row) => (
             <div className="demographics-bar-row" key={row.id}>
               <span className="demographics-bar-year">{row.year}</span>
               <span className="demographics-bar-track">

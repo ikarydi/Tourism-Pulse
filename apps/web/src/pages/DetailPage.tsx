@@ -19,6 +19,12 @@ import type { PlaceDemographics } from '../types/demographics'
 import type { Observatory } from '../types/observatory'
 import type { Place } from '../types/place'
 import type { DimensionKey, Pulse, PulseAnomaly, PulseSnapshot, PulseTrend } from '../types/pulse'
+import { PlaceContext } from '../components/PlaceContext'
+import { PlaceStatistics } from '../components/PlaceStatistics'
+import { isCurated } from '../lib/places'
+import type { Catalog } from '../types/explore'
+import type { ExploreDraft } from './ExplorePage'
+import { RegionDetail } from './RegionDetail'
 import './DetailPage.css'
 
 type State = {
@@ -43,7 +49,20 @@ const EMPTY_STATE: State = {
   observatory: null,
 }
 
-export function DetailPage({ place }: { place: Place }) {
+type DetailProps = {
+  place: Place
+  places: Place[]
+  catalog: Catalog | null
+  onOpenExplore: (draft: ExploreDraft) => void
+  onSelectPlace: (placeId: number) => void
+}
+
+/** Curated places get the Pulse page; EU regions, areas and cities the statistics page. */
+export function DetailPage(props: DetailProps) {
+  return isCurated(props.place) ? <CuratedDetail {...props} /> : <RegionDetail {...props} />
+}
+
+function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace }: DetailProps) {
   const [state, setState] = useState<State>(EMPTY_STATE)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -131,9 +150,13 @@ export function DetailPage({ place }: { place: Place }) {
 
   if (!pulse) {
     return (
-      <div className="state-panel">
-        <strong>No pulse data yet</strong>
-        <span>{place.name} does not have enough signals or events to calculate a pulse.</span>
+      <div className="detail-page">
+        <div className="state-panel">
+          <strong>No pulse data yet</strong>
+          <span>{place.name} does not have enough signals or events to calculate a pulse.</span>
+        </div>
+        <PlaceContext place={place} places={places} onSelectPlace={onSelectPlace} />
+        <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
       </div>
     )
   }
@@ -177,6 +200,10 @@ export function DetailPage({ place }: { place: Place }) {
           />
         </div>
       </div>
+
+      <PlaceContext place={place} places={places} onSelectPlace={onSelectPlace} />
+
+      <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
 
       <section className="section-block">
         <div className="section-title">

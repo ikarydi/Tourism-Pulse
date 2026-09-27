@@ -5,6 +5,7 @@ import {
   collapseRows,
   formatPeriod,
   formatValue,
+  labelMargin,
   pearson,
   placeName,
   SERIES_COLORS,
@@ -16,6 +17,10 @@ import { PlotFigure } from './PlotFigure'
 import './ExploreChart.css'
 
 const TEXT = '#8ea0b3'
+const LABEL_CHARS = 32
+
+// Category labels past the margin are shortened; tooltips keep the full name.
+const shortLabel = (label: string) => (label.length > LABEL_CHARS ? `${label.slice(0, LABEL_CHARS - 1)}…` : label)
 const TIP = { fill: '#101e2e', stroke: 'rgba(163, 196, 224, 0.3)' }
 const STYLE = {
   background: 'transparent',
@@ -55,8 +60,10 @@ function LineChart({ result, metric, height }: { result: QueryResult; metric: Me
         style: STYLE,
         marginLeft: 56,
         marginRight: 16,
+        // Sparkline-sized cards already name the metric in their header.
+        marginTop: height < 200 ? 10 : undefined,
         x: { type: 'utc', label: null },
-        y: { grid: true, label: axisLabel(metric), tickFormat: tickFormat(metric) },
+        y: { grid: true, label: height < 200 ? null : axisLabel(metric), tickFormat: tickFormat(metric) },
         color: { domain: names, range: SERIES_COLORS, legend: names.length > 1 },
         marks: [
           Plot.lineY(data, { x: 'date', y: 'value', stroke: 'place', strokeWidth: 2, curve: 'monotone-x' }),
@@ -79,10 +86,17 @@ function LineChart({ result, metric, height }: { result: QueryResult; metric: Me
   return <PlotFigure build={build} />
 }
 
+const HEATMAP_ROWS = 40
+
 function Heatmap({ result, metric, grain }: { result: QueryResult; metric: Metric; grain: string }) {
+  const latest = useMemo(() => collapseRows(result.rows, 'latest').get(metric.id) ?? new Map<number, number>(), [result, metric])
   const build = useCallback(
     (width: number) => {
-      const rows = result.rows.filter((row) => row.metric === metric.id && row.period)
+      // Many places: keep the rows with the highest latest values.
+      const keep = new Set(
+        [...latest].sort((a, b) => b[1] - a[1]).slice(0, HEATMAP_ROWS).map(([placeId]) => placeId),
+      )
+      const rows = result.rows.filter((row) => row.metric === metric.id && row.period && keep.has(row.place_id))
       const periods = [...new Set(rows.map((row) => row.period as string))].sort()
       const labels = periods.map((period) => formatPeriod(period, grain))
       const data = rows.map((row) => ({
@@ -96,11 +110,11 @@ function Heatmap({ result, metric, grain }: { result: QueryResult; metric: Metri
         width,
         height: Math.max(160, places.length * 16 + 70),
         style: STYLE,
-        marginLeft: 120,
+        marginLeft: labelMargin(places),
         marginBottom: 40,
         padding: 0.06,
         x: { domain: labels, label: null, tickFormat: (d: string, i: number) => (i % step ? '' : d) },
-        y: { domain: places, label: null },
+        y: { domain: places, label: null, tickFormat: shortLabel },
         color: { scheme: 'plasma', legend: true, label: axisLabel(metric), tickFormat: tickFormat(metric) },
         marks: [
           Plot.cell(data, {
@@ -112,9 +126,18 @@ function Heatmap({ result, metric, grain }: { result: QueryResult; metric: Metri
         ],
       })
     },
-    [result, metric, grain],
+    [result, metric, grain, latest],
   )
-  return <PlotFigure build={build} />
+  return (
+    <>
+      <PlotFigure build={build} />
+      {latest.size > HEATMAP_ROWS && (
+        <p className="chart-footnote">
+          Top {HEATMAP_ROWS} of {latest.size} places by latest value.
+        </p>
+      )}
+    </>
+  )
 }
 
 function BarChart({
@@ -122,11 +145,13 @@ function BarChart({
   metric,
   chart,
   maxBars,
+  seeAll = 'Open the chart to see all.',
 }: {
   result: QueryResult
   metric: Metric
   chart: ChartSpec
   maxBars?: number
+  seeAll?: string
 }) {
   const values = collapseRows(result.rows, chart.collapse).get(metric.id) ?? new Map<number, number>()
   const total = values.size
@@ -141,12 +166,19 @@ function BarChart({
         width,
         height: Math.max(140, data.length * 18 + 50),
         style: STYLE,
-        marginLeft: 120,
+        marginLeft: labelMargin(data.map((d) => d.place)),
         marginRight: 56,
         x: { grid: true, label: axisLabel(metric), tickFormat: tickFormat(metric) },
-        y: { label: null },
+        y: { label: null, tickFormat: shortLabel },
         marks: [
-          Plot.barX(data, { x: 'value', y: 'place', sort: { y: '-x' }, fill: '#5fd3e8', fillOpacity: 0.85 }),
+          Plot.barX(data, {
+            x: 'value',
+            y: 'place',
+            sort: { y: '-x' },
+            fill: '#5fd3e8',
+            fillOpacity: 0.85,
+            title: (d: { place: string; value: number }) => `${d.place}: ${formatValue(metric, d.value)}`,
+          }),
           Plot.text(data, {
             x: 'value',
             y: 'place',
@@ -166,7 +198,7 @@ function BarChart({
       <PlotFigure build={build} />
       {maxBars !== undefined && total > maxBars && (
         <p className="chart-footnote">
-          Top {maxBars} of {total} places. Open the chart to see all.
+          Top {maxBars} of {total} places. {seeAll}
         </p>
       )}
     </>
@@ -265,11 +297,14 @@ function ScatterChart({ result, chart, height }: { result: QueryResult; chart: C
   )
 }
 
+const TABLE_ROWS = 200
+
 function DataTable({ result, chart }: { result: QueryResult; chart: ChartSpec }) {
   const collapsed = collapseRows(result.rows, chart.collapse)
   const placeIds = [...new Set(result.rows.map((row) => row.place_id))]
   const first = result.metrics[0]
   placeIds.sort((a, b) => (collapsed.get(first.id)?.get(b) ?? -Infinity) - (collapsed.get(first.id)?.get(a) ?? -Infinity))
+  const shown = placeIds.slice(0, TABLE_ROWS)
   return (
     <div className="chart-table-wrap">
       <table className="chart-table">
@@ -285,7 +320,7 @@ function DataTable({ result, chart }: { result: QueryResult; chart: ChartSpec })
           </tr>
         </thead>
         <tbody>
-          {placeIds.map((placeId) => (
+          {shown.map((placeId) => (
             <tr key={placeId}>
               <td>{placeName(result.places, placeId)}</td>
               {result.metrics.map((metric) => {
@@ -296,6 +331,11 @@ function DataTable({ result, chart }: { result: QueryResult; chart: ChartSpec })
           ))}
         </tbody>
       </table>
+      {placeIds.length > TABLE_ROWS && (
+        <p className="chart-footnote">
+          First {TABLE_ROWS} of {placeIds.length} places, by {first.label}.
+        </p>
+      )}
     </div>
   )
 }
@@ -340,7 +380,13 @@ export function ExploreChart({
   } else if (chart.type === 'bar' || (chart.type === 'scatter' && result.metrics.length < 2)) {
     body = result.metrics.map((metric) => (
       <Panel key={metric.id} title={small ? metric.label : undefined}>
-        <BarChart result={result} metric={metric} chart={chart} maxBars={maxBars} />
+        <BarChart
+          result={result}
+          metric={metric}
+          chart={chart}
+          maxBars={maxBars ?? 40}
+          seeAll={maxBars === undefined ? 'Switch to Map or Table to see more.' : undefined}
+        />
       </Panel>
     ))
   } else {

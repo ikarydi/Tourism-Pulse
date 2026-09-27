@@ -384,7 +384,30 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
 }
 
 
-def _signal_metric(signal_type: str) -> Metric:
+# Stored source keys as readers know them.
+_SOURCE_NAMES = {
+    "eurostat": "Eurostat",
+    "ksh": "KSH",
+    "wikipedia": "Wikipedia",
+    "gdelt": "GDELT",
+    "youtube": "YouTube",
+    "gdacs": "GDACS",
+    "ticketmaster": "Ticketmaster",
+    "open_meteo": "Open-Meteo",
+    "openmeteo": "Open-Meteo",
+    "open-meteo": "Open-Meteo",
+    "opensky": "OpenSky",
+    "osm": "OpenStreetMap",
+    "google_trends": "Google Trends",
+}
+
+
+def _source_label(sources: list[str]) -> str:
+    names = sorted({_SOURCE_NAMES.get(source, source) for source in sources})
+    return " + ".join(names) if names else "signals"
+
+
+def _signal_metric(signal_type: str, sources: list[str] | None = None) -> Metric:
     label, group, unit, grain, aggregation, description = _SIGNALS.get(
         signal_type,
         (
@@ -405,7 +428,7 @@ def _signal_metric(signal_type: str) -> Metric:
         aggregation=aggregation,
         description=description,
         kind=SIGNAL,
-        source="signals",
+        source=_source_label(sources or []),
         key=signal_type,
     )
 
@@ -414,7 +437,10 @@ def build_catalog(db: Session) -> dict[str, Metric]:
     """Every chartable metric: the fixed ones plus a signal metric for each
     signal type actually stored (so the catalog never lists empty data)."""
     catalog = {metric.id: metric for metric in _STATIC_METRICS}
-    for (signal_type,) in db.query(Signal.signal_type).distinct():
-        metric = _signal_metric(signal_type)
+    sources: dict[str, list[str]] = {}
+    for signal_type, source in db.query(Signal.signal_type, Signal.source).distinct():
+        sources.setdefault(signal_type, []).append(source)
+    for signal_type, found in sources.items():
+        metric = _signal_metric(signal_type, found)
         catalog[metric.id] = metric
     return dict(sorted(catalog.items(), key=lambda item: (item[1].group, item[1].label)))

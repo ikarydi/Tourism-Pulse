@@ -28,7 +28,7 @@ export type Catalog = { metrics: Metric[]; places: PlaceRef[] }
 export type QuerySpec = {
   metrics: string[]
   places: number[] | null
-  place_type: 'destination' | 'country' | null
+  place_type: 'destination' | 'city' | 'region' | 'area' | 'country' | null
   grain: Grain
   start: string | null
   end: string | null

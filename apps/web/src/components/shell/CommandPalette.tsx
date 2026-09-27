@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import type { PlaceRef, SavedView } from '../../types/explore'
+import { isCurated, placeSubtitle } from '../../lib/places'
+import type { SavedView } from '../../types/explore'
+import type { Place } from '../../types/place'
 import { NAV, type View } from './nav'
 
 type Item =
@@ -18,7 +20,7 @@ export function CommandPalette({
   onOpenView,
   onAsk,
 }: {
-  places: PlaceRef[]
+  places: Place[]
   views: SavedView[]
   detailEnabled: boolean
   onClose: () => void
@@ -37,14 +39,17 @@ export function CommandPalette({
     const pages: Item[] = NAV.filter((item) => (item.view !== 'detail' || detailEnabled) && matches(item.label)).map(
       (item) => ({ kind: 'page', key: `page-${item.view}`, label: item.label, hint: 'Page', view: item.view }),
     )
+    const rank = (name: string) => (name.toLowerCase().startsWith(needle) ? 0 : 1)
     const placeItems: Item[] = places
       .filter((place) => needle && matches(place.name))
-      .slice(0, 8)
+      // Names starting with the query first, curated places before generated ones.
+      .sort((a, b) => rank(a.name) - rank(b.name) || Number(isCurated(b)) - Number(isCurated(a)))
+      .slice(0, 10)
       .map((place) => ({
         kind: 'place',
         key: `place-${place.id}`,
         label: place.name,
-        hint: place.place_type === 'country' ? 'Country' : `Destination · ${place.country_code ?? ''}`,
+        hint: placeSubtitle(place),
         placeId: place.id,
       }))
     const viewItems: Item[] = views

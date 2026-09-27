@@ -9,6 +9,8 @@ const CHART_HEIGHT = 220
 const PADDING = { top: 18, right: 18, bottom: 34, left: 42 }
 const INNER_WIDTH = CHART_WIDTH - PADDING.left - PADDING.right
 const INNER_HEIGHT = CHART_HEIGHT - PADDING.top - PADDING.bottom
+// Rough width of one "Aug 22, 2:17 PM" label in viewBox units.
+const DATE_LABEL_WIDTH = 90
 
 type SeriesKey = 'pulse' | DimensionKey
 
@@ -69,7 +71,10 @@ export function HistoryChart({ history }: { history: PulseSnapshot[] }) {
           ))}
           {points.map(
             (point, index) =>
-              (index % labelStep === 0 || index === points.length - 1) && (
+              // The last point is always labelled (right-aligned); drop a stepped
+              // label close enough to run into it.
+              ((index % labelStep === 0 && x(points.length - 1) - x(index) >= DATE_LABEL_WIDTH * 1.5) ||
+                index === points.length - 1) && (
                 <text
                   className="date-label"
                   key={point.id}

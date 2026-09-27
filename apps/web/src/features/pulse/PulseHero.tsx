@@ -18,7 +18,7 @@ export function PulseHero({
   selectedDimension,
   onSelectDimension,
 }: {
-  place: { name: string; country_code?: string }
+  place: { name: string; country_code?: string | null }
   pulse: Pulse
   trend: PulseTrend | null
   selectedDimension: DimensionKey | null
