@@ -3,22 +3,12 @@ import { formatCompactNumber, formatNumber } from '../lib/format'
 import type { PlaceDemographics } from '../types/demographics'
 import './DemographicsCard.css'
 
-// Provisional bands, like the backend's reference ratio in
-// pulse/visitor_pressure.py - not measured carrying-capacity thresholds.
-function pressureLevel(index: number) {
-  if (index >= 70) return 'high'
-  if (index >= 40) return 'moderate'
-  return 'low'
-}
-
 export function DemographicsCard({
   demographics,
   visitorPressureSignal,
-  pressureIndex,
 }: {
   demographics: PlaceDemographics[]
   visitorPressureSignal: Signal | undefined
-  pressureIndex: number | null
 }) {
   const sorted = [...demographics].sort((a, b) => a.year - b.year)
   const latest = sorted[sorted.length - 1]
@@ -49,17 +39,6 @@ export function DemographicsCard({
         </div>
       ) : (
         <p className="empty-note">No population history recorded for this place yet.</p>
-      )}
-
-      {pressureIndex !== null && (
-        <div className={`pressure-index ${pressureLevel(pressureIndex)}`}>
-          <span className="pressure-index-value">{pressureIndex.toFixed(0)}</span>
-          <span>
-            <strong>Tourism pressure: {pressureLevel(pressureIndex)}</strong>
-            Scored 0-100, where higher means more strain on residents. Shown separately from
-            the Pulse score, which it does not affect.
-          </span>
-        </div>
       )}
 
       {visitorPressureSignal && (
