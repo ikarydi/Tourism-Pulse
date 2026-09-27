@@ -82,3 +82,33 @@ Does the primary model beat the best official-data-only baseline
 (SNG, AIRLINE, GR, chosen on development) in a majority of countries on
 the holdout? If the gate passes but this fails, the alt-data signals are
 not the reason, and the product claim must say so.
+
+## Amendment 1 (2026-09-27, before any GDELT-based result was produced)
+
+**Change:** the GDELT inputs now come from GDELT's daily Global Knowledge
+Graph files (`data.gdeltproject.org/gkg/YYYYMMDD.gkg.csv.zip`) instead
+of the DOC 2.0 API.
+
+**Why:** the DOC API throttled this machine to roughly one request per
+5-15 minutes and then refused all requests for 5+ minutes at a time,
+making the 60-request backfill impractical. The raw files are served
+from static storage without throttling.
+
+**New definitions** (per country, per month):
+
+- An article record counts as *tourism* if its THEMES contain any of
+  `TOURISM`, `WB_825_TOURISM`, `TAX_FNCACT_TOURIST`, `TAX_FNCACT_TOURISTS`.
+- It counts for a country if any of its LOCATIONS carries that country's
+  FIPS code (one count per record per country).
+- `articles` = sum of NUMARTS over tourism records mentioning the
+  country; `corpus` = sum of NUMARTS over all records that day. So
+  `gdelt_share` = articles / corpus, as before.
+- `tone` = NUMARTS-weighted mean of the first TONE field over the same
+  records.
+- Monthly values sum or average over the days available (missing daily
+  files are skipped and counted).
+
+Models, periods, metrics, selection rule and gate are unchanged. At the
+time of this amendment only the models without GDELT had been run
+(development period, pipeline check); no model using GDELT had produced
+any number.
