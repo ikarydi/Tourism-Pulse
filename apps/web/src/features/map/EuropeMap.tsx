@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CircleMarker, MapContainer, TileLayer } from 'react-leaflet'
+import type { FeatureCollection } from 'geojson'
+import { CircleMarker, GeoJSON, MapContainer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getPlacePulseSummary } from '../../api/pulse'
 import { DIMENSIONS } from '../../lib/dimensions'
@@ -11,6 +12,43 @@ import './EuropeMap.css'
 // Centered/zoomed to frame continental Europe at a glance.
 const EUROPE_CENTER: [number, number] = [54, 15]
 const EUROPE_ZOOM = 4
+// The outline basemap is 1:50m; past this zoom its coastlines look coarse.
+const MAX_ZOOM = 8
+
+// Keyless basemap: Natural Earth land outlines (public domain), built by
+// scripts/build_basemap.py and served from public/. CARTO's free tiles
+// started returning an "API key required" watermark, and the map never
+// needed more than dark land on dark sea - its markers carry the data.
+const BASEMAP_URL = '/basemap/europe-land.geojson'
+
+function LandBasemap() {
+  const [land, setLand] = useState<FeatureCollection | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(BASEMAP_URL)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: FeatureCollection | null) => {
+        if (!cancelled) setLand(data)
+      })
+      .catch(() => {
+        // Without the basemap the markers still work on the plain sea colour.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!land) return null
+  return (
+    <GeoJSON
+      data={land}
+      interactive={false}
+      attribution='<a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer">Natural Earth</a>'
+      style={{ className: 'basemap-land' }}
+    />
+  )
+}
 
 type LocatedPlace = Place & { latitude: number; longitude: number }
 
@@ -258,23 +296,15 @@ export function EuropeMap({
               <i style={{ background: 'var(--text-faint)' }} /> No data yet
             </span>
           </div>
-          <MapContainer center={EUROPE_CENTER} zoom={EUROPE_ZOOM} scrollWheelZoom className="europe-map">
-            {/* CARTO's free "Dark Matter" basemap, no-labels variant - a
-                genuinely dark, minimal cartography (not a CSS filter over
-                bright OSM tiles), and critically no baked-in place-label/
-                POI icon glyphs to clash with our own trend markers - those
-                are rendered server-side into the tiles on the labeled
-                variant, so removing them meant switching tile sets, not
-                styling around them. No API key; still OSM data underneath,
-                so both are credited. A mild brightness lift (see
-                .europe-map .leaflet-tile-pane) keeps it from reading as
-                near-black. */}
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-              subdomains="abcd"
-              maxZoom={20}
-            />
+          <MapContainer
+            center={EUROPE_CENTER}
+            zoom={EUROPE_ZOOM}
+            minZoom={3}
+            maxZoom={MAX_ZOOM}
+            scrollWheelZoom
+            className="europe-map"
+          >
+            <LandBasemap />
             {located.map((place) => {
               const pulse = pulses[place.id] ?? null
               const isCountry = place.place_type === 'country'

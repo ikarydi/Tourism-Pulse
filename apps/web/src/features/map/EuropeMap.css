@@ -23,8 +23,14 @@
   background: #050a10;
 }
 
-.europe-map .leaflet-tile-pane {
-  filter: brightness(1.55) contrast(0.92);
+/* Keyless outline basemap (see LandBasemap): land a step above the sea,
+   borders at the app's border tone. CSS rules win over Leaflet's inline
+   SVG presentation attributes. */
+.europe-map .basemap-land {
+  fill: #13212f;
+  fill-opacity: 1;
+  stroke: rgba(163, 196, 224, 0.22);
+  stroke-width: 0.6;
 }
 
 .map-footnote {
