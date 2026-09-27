@@ -11,6 +11,10 @@ export type IndicatorReading = {
   peers: number
   source: string
   source_observation_id: number | null
+  // The region this indicator comes from: the finest level with data.
+  region_code: string
+  region_name: string | null
+  level_name: string
 }
 
 export type Observatory = {
@@ -23,4 +27,11 @@ export type Observatory = {
   score: number | null
   level: 'low' | 'moderate' | 'high' | null
   method: string | null
+}
+
+// One row of GET /observatory.
+export type ObservatoryRanking = Observatory & {
+  place_name: string
+  place_type: string
+  country_code: string | null
 }

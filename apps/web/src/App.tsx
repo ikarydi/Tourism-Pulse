@@ -3,10 +3,11 @@ import './App.css'
 import { getPlaces } from './api/places'
 import { DetailPage } from './pages/DetailPage'
 import { MapPage } from './pages/MapPage'
+import { ObservatoryPage } from './pages/ObservatoryPage'
 import { OverviewPage } from './pages/OverviewPage'
 import type { Place } from './types/place'
 
-type View = 'overview' | 'map' | 'detail'
+type View = 'overview' | 'map' | 'observatory' | 'detail'
 
 function App() {
   const [view, setView] = useState<View>('map')
@@ -53,7 +54,8 @@ function App() {
         <div className={`page-heading${view === 'map' ? ' page-heading-compact' : ''}`}>
           <div>
             <p className="eyebrow">
-              Destination intelligence / {view === 'overview' ? 'All destinations' : view === 'map' ? 'Map' : 'Detail'}
+              Destination intelligence /{' '}
+              {{ overview: 'All destinations', map: 'Map', observatory: 'Pressure observatory', detail: 'Detail' }[view]}
             </p>
             <h1>Tourism Pulse</h1>
             <p className="subheading">
@@ -68,6 +70,13 @@ function App() {
               </button>
               <button type="button" className={view === 'map' ? 'active' : ''} onClick={() => setView('map')}>
                 Map
+              </button>
+              <button
+                type="button"
+                className={view === 'observatory' ? 'active' : ''}
+                onClick={() => setView('observatory')}
+              >
+                Pressure observatory
               </button>
               <button
                 type="button"
@@ -124,6 +133,10 @@ function App() {
 
         {!loadingPlaces && !!places.length && view === 'overview' && (
           <OverviewPage places={places} onSelectPlace={(placeId) => handlePlaceChange(placeId)} />
+        )}
+
+        {!loadingPlaces && !!places.length && view === 'observatory' && (
+          <ObservatoryPage onSelectPlace={(placeId) => handlePlaceChange(placeId)} />
         )}
 
         {!loadingPlaces && !!places.length && view === 'map' && (
