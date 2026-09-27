@@ -7,6 +7,7 @@ import {
   CHART_TYPES,
   DEFAULT_CHART,
   DEFAULT_QUERY,
+  defaultCollapse,
   formatPeriod,
   GROUP_ORDER,
   recommendChart,
@@ -117,7 +118,8 @@ export function ExplorePage({
   function pickType(type: ChartType) {
     setChartTouched(true)
     setSaveState('idle')
-    setChart({ ...shownChart, type, x: xForType(type) })
+    const collapse = chartTouched ? shownChart.collapse : defaultCollapse(metrics)
+    setChart({ ...shownChart, type, x: xForType(type), collapse })
   }
 
   async function handleAsk(text: string) {

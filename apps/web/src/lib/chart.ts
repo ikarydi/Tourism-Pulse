@@ -38,19 +38,26 @@ export function availableTypes(metrics: Metric[]): ChartType[] {
   return CHART_TYPES.map((item) => item.type).filter((type) => types.includes(type))
 }
 
+/** Per-place value: counts (articles, events, videos) add up over the
+ * period; everything else is read at its latest value. */
+export function defaultCollapse(metrics: Metric[]): Collapse {
+  return metrics.some((metric) => metric.id.startsWith('count.')) ? 'sum' : 'latest'
+}
+
 /** The chart we'd draw for these metrics and places if the user hasn't chosen. */
 export function recommendChart(metrics: Metric[], placeCount: number): ChartSpec {
   const allStatic = metrics.every((metric) => metric.grain === 'static')
   const annualOnly = metrics.every((metric) => metric.grain === 'year' || metric.grain === 'static')
+  const collapse = defaultCollapse(metrics)
   if (!metrics.length) return DEFAULT_CHART
   if (metrics.length >= 2 && (placeCount > 8 || allStatic)) {
-    return { type: 'scatter', x: 'place', collapse: 'latest', color: null }
+    return { type: 'scatter', x: 'place', collapse, color: null }
   }
   if (allStatic || (annualOnly && placeCount > 8)) {
-    return { type: 'bar', x: 'place', collapse: 'latest', color: null }
+    return { type: 'bar', x: 'place', collapse, color: null }
   }
-  if (placeCount > 8) return { type: 'heatmap', x: 'time', collapse: 'latest', color: null }
-  return { type: 'line', x: 'time', collapse: 'latest', color: metrics.length > 1 ? 'metric' : 'place' }
+  if (placeCount > 8) return { type: 'heatmap', x: 'time', collapse, color: null }
+  return { type: 'line', x: 'time', collapse, color: metrics.length > 1 ? 'metric' : 'place' }
 }
 
 export function xForType(type: ChartType): 'time' | 'place' {

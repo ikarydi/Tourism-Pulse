@@ -53,7 +53,10 @@ to metrics by their labels, never by their ids. Trends over time: line
 (x=time). Comparing places on one metric: bar (x=place). Relationship between two
 metrics across places: scatter (x=place, first metric on the x axis, second on the
 y axis). Many places over time: heatmap. Geographic view of one metric: map.
-Match the grain to the metric's native grain (annual metrics: year). If the
+Match the grain to the metric's native grain (annual metrics: year). For x=place
+charts, "collapse" folds each place's series into one value: use "sum" when any
+metric counts things (Media & events group: articles, events, videos), otherwise
+"latest". If the
 question cannot be answered from METRICS, pick the closest metrics and say so in
 the explanation."""
 
