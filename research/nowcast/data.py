@@ -201,7 +201,7 @@ def fetch_pageviews(end: str) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values(["geo", "series", "month"]).reset_index(drop=True)
 
 
-def _get_gdelt(params: dict[str, str], *, attempts: int = 8) -> dict:
+def _get_gdelt(params: dict[str, str], *, attempts: int = 40) -> dict:
     url = f"{GDELT_URL}?{urllib.parse.urlencode(params)}"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     for attempt in range(attempts):
@@ -216,7 +216,9 @@ def _get_gdelt(params: dict[str, str], *, attempts: int = 8) -> dict:
         # plain-text notice instead of JSON.
         if body.lstrip().startswith("{"):
             return json.loads(body)
-        time.sleep(GDELT_SPACING_SECONDS * (attempt + 2))
+        # GDELT throttles long-range queries far below its stated one
+        # request per 5 s; back off up to 90 s and keep going.
+        time.sleep(min(GDELT_SPACING_SECONDS * (attempt + 2), 90.0))
     raise RuntimeError(f"GDELT kept throttling: {params['query']!r}")
 
 

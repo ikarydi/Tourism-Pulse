@@ -12,16 +12,23 @@ then, once the primary model is chosen and committed, exactly once:
 Results go to research/nowcast/results/.
 """
 
-import argparse
-import math
-import warnings
-from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
-from pathlib import Path
+import os
 
-import numpy as np
-import pandas as pd
-from scipy import stats
+# One BLAS thread per process: the SARIMA fits run in a process pool, and
+# multi-threaded BLAS inside each worker oversubscribes the CPU badly.
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")
+
+import argparse  # noqa: E402
+import math  # noqa: E402
+import warnings  # noqa: E402
+from concurrent.futures import ProcessPoolExecutor  # noqa: E402
+from dataclasses import dataclass  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from scipy import stats  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
@@ -56,7 +63,14 @@ def in_covid(month: pd.Period) -> bool:
 def load_panel() -> dict[str, pd.DataFrame]:
     nights = pd.read_csv(DATA_DIR / "nights.csv")
     views = pd.read_csv(DATA_DIR / "pageviews.csv")
-    gdelt = pd.read_csv(DATA_DIR / "gdelt.csv")
+    gdelt_path = DATA_DIR / "gdelt.csv"
+    # GDELT's API is slow to backfill; without it the GDELT models simply
+    # produce no forecasts (useful for pipeline checks, never for selection).
+    gdelt = (
+        pd.read_csv(gdelt_path)
+        if gdelt_path.exists()
+        else pd.DataFrame(columns=["geo", "month", "articles", "corpus", "tone"])
+    )
 
     wiki = views.groupby(["geo", "month"], as_index=False)["views"].sum()
     # A month is only usable if all three article series report it.
@@ -249,7 +263,9 @@ def run(period: str) -> pd.DataFrame:
     errors["scaled_abs_error"] = (errors["actual"] - errors["forecast"]).abs() / errors["geo"].map(
         scales
     )
-    errors["covered"] = (errors["actual"] >= errors["low"]) & (errors["actual"] <= errors["high"])
+    errors["covered"] = (
+        (errors["actual"] >= errors["low"]) & (errors["actual"] <= errors["high"])
+    ).astype(float)
     errors.loc[errors["low"].isna(), "covered"] = np.nan
     errors["ape"] = (errors["actual"] - errors["forecast"]).abs() / errors["actual"]
     return errors
