@@ -209,7 +209,7 @@ def test_fresher_signal_outweighs_stale_one_in_same_dimension() -> None:
     assert result.pulse.demand == pytest.approx(40.0)
 
 
-def test_pressure_is_reported_beside_the_pulse_not_inside_it() -> None:
+def test_pressure_signals_never_enter_the_pulse() -> None:
     engine = PulseEngine()
     demand = SignalInput(
         dimension="demand",
@@ -233,8 +233,6 @@ def test_pressure_is_reported_beside_the_pulse_not_inside_it() -> None:
         ]
     )
 
-    assert without_pressure.pressure is None
-    assert with_pressure.pressure == pytest.approx(90.0)
     # Pressure changes neither the composite, any dimension, nor confidence.
     assert with_pressure.pulse == without_pressure.pulse
     assert with_pressure.confidence == without_pressure.confidence

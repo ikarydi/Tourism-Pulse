@@ -21,6 +21,7 @@ import logging
 
 from groq import Groq, GroqError
 
+from tourism_pulse_api.observatory.pressure import PressureReading
 from tourism_pulse_api.pulse.calculator import PulseResult
 from tourism_pulse_api.pulse.insights import DimensionEvidence
 from tourism_pulse_api.settings import settings
@@ -80,12 +81,27 @@ def _format_evidence(evidence: dict[str, DimensionEvidence]) -> str:
     return "\n".join(lines)
 
 
+def _format_pressure(pressure: PressureReading) -> str:
+    lines = [
+        f"\nPRESSURE = {pressure.score:.1f}/100 ({pressure.level}), "
+        f"{pressure.region_name or pressure.nuts_code} ({pressure.level_name})"
+    ]
+    for reading in pressure.indicators:
+        lines.append(
+            f"  - {reading.label}: {reading.value:,.2f} {reading.unit} in {reading.year}, "
+            f"rank {reading.rank} of {reading.peers} European regions "
+            f"({reading.percentile:.0f}th percentile, source: {reading.source})"
+        )
+    return "\n".join(lines)
+
+
 def generate_narrative(
     *,
     place_name: str,
     pulse: PulseResult,
     evidence: dict[str, DimensionEvidence],
     headline: str,
+    pressure: PressureReading | None = None,
 ) -> str | None:
     if not settings.groq_api_key:
         return None
@@ -96,6 +112,8 @@ def generate_narrative(
         f"Headline: {headline}\n"
         f"Evidence by dimension:\n{_format_evidence(evidence)}"
     )
+    if pressure is not None and pressure.score is not None:
+        user_prompt += _format_pressure(pressure)
 
     try:
         client = Groq(api_key=settings.groq_api_key)

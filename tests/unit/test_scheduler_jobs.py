@@ -238,3 +238,14 @@ def test_eurostat_remaps_greece_to_eurostats_own_geo_code(
     assert matching_jobs
     for argv in matching_jobs:
         assert argv[argv.index("--geo") + 1] == "EL"
+
+
+def test_eurostat_regional_runs_once_for_all_regions() -> None:
+    from tourism_pulse_api.scheduler.jobs import (
+        SCHEDULED_ADAPTERS,
+        build_argv_eurostat_regional,
+    )
+
+    assert build_argv_eurostat_regional(None) == [[]]  # type: ignore[arg-type]
+    (adapter,) = [a for a in SCHEDULED_ADAPTERS if a.name == "eurostat_regional"]
+    assert adapter.interval_minutes == 7 * 24 * 60

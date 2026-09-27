@@ -33,7 +33,6 @@ from tourism_pulse_api.db.models.signal import Signal
 from tourism_pulse_api.db.models.video_item import VideoItem
 from tourism_pulse_api.pulse.calculator import PulseResult
 from tourism_pulse_api.pulse.coefficients import DIMENSION_WEIGHTS
-from tourism_pulse_api.pulse.engine import PRESSURE_DIMENSION
 from tourism_pulse_api.pulse.signal_adapter import DIMENSION_MAP
 
 # Caps keep both the API response and (later) the narrative prompt built
@@ -183,7 +182,6 @@ def build_all_dimension_evidence(
     pulse: PulseResult,
     signals: list[Signal],
     events: list[Event],
-    pressure: float | None = None,
 ) -> dict[str, DimensionEvidence]:
     """One `DimensionEvidence` per Pulse dimension (`pulse.coefficients.
     DIMENSION_WEIGHTS`'s 6 keys). `signals`/`events` are the place's
@@ -211,7 +209,7 @@ def build_all_dimension_evidence(
         .all()
     )
 
-    evidence = {
+    return {
         dimension: _evidence_for_dimension(
             dimension=dimension,
             dimension_value=getattr(pulse, dimension),
@@ -222,17 +220,3 @@ def build_all_dimension_evidence(
         )
         for dimension in DIMENSION_WEIGHTS
     }
-
-    # The pressure index sits beside the Pulse (pulse.engine.
-    # PRESSURE_DIMENSION); it gets evidence only when it has a reading.
-    if pressure is not None:
-        evidence[PRESSURE_DIMENSION] = _evidence_for_dimension(
-            dimension=PRESSURE_DIMENSION,
-            dimension_value=pressure,
-            signals=signals,
-            events=events,
-            articles=articles,
-            videos=videos,
-        )
-
-    return evidence

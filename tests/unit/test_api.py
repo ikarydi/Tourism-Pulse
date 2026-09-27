@@ -676,7 +676,7 @@ def test_pulse_trend_uses_previous_snapshot() -> None:
     assert trend["change"] > 0
 
 
-def test_visitor_pressure_feeds_pressure_index_not_capacity() -> None:
+def test_visitor_pressure_signal_stays_out_of_the_pulse() -> None:
     destination_id = client.post(
         "/destinations",
         json={"country_code": "HU", "name": "Test Pressure Destination"},
@@ -699,14 +699,11 @@ def test_visitor_pressure_feeds_pressure_index_not_capacity() -> None:
 
     pulse = client.get(f"/places/{place_id}/pulse").json()
 
-    assert pulse["pressure"] is not None
-    assert pulse["pressure"] > 50.0
-    # Capacity has no signal of its own here, so it stays unfed.
+    # Capacity has no signal of its own here, so it stays unfed, and with
+    # no NUTS region there is no observatory pressure score either.
     assert pulse["dimensions"]["capacity"] == 0.0
-    assert "pressure" in pulse["evidence"]
-
-    history = client.get(f"/places/{place_id}/pulse/history").json()
-    assert history[0]["pressure"] == pulse["pressure"]
+    assert pulse["pressure"] is None
+    assert "pressure" not in pulse["evidence"]
 
 
 def test_pressure_signal_alone_does_not_produce_a_pulse() -> None:

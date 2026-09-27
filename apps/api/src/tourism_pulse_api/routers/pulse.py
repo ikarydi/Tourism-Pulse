@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Event, Place, PulseSnapshot, Signal
 from tourism_pulse_api.db.session import get_db
+from tourism_pulse_api.observatory.pressure import pressure_for_region
 from tourism_pulse_api.pulse.anomaly import detect_anomaly
 from tourism_pulse_api.pulse.engine import PRESSURE_DIMENSION, PulseEngine
 from tourism_pulse_api.pulse.event_adapter import event_to_signal
@@ -128,8 +129,8 @@ def calculate_place_pulse(
         if event_signal is not None
     )
 
-    # Pressure signals feed the separate pressure index, so on their own
-    # they cannot produce a Pulse.
+    # Pressure signals are raw evidence beside the Pulse, never part of it,
+    # so on their own they cannot produce a Pulse.
     if not any(signal.dimension != PRESSURE_DIMENSION for signal in processed_signals):
         raise HTTPException(
             status_code=422,
@@ -164,6 +165,13 @@ def calculate_place_pulse(
         confidence=result.confidence,
     )
 
+    # Tourism pressure comes from the observatory's official regional
+    # indicators, reported beside the Pulse and never blended into it.
+    pressure_reading = (
+        pressure_for_region(db, place.nuts_code) if place.nuts_code is not None else None
+    )
+    pressure = pressure_reading.score if pressure_reading is not None else None
+
     # Evidence (pulse.insights) - which signals/articles/videos/events
     # actually explain each dimension - is only computed on the real
     # persist=true calculation, same reasoning as the snapshot write
@@ -174,7 +182,6 @@ def calculate_place_pulse(
             db,
             place_id=place_id,
             pulse=result.pulse,
-            pressure=result.pressure,
             signals=signals,
             events=events,
         )
@@ -206,6 +213,7 @@ def calculate_place_pulse(
                 pulse=result.pulse,
                 evidence=evidence,
                 headline=str(interpretation["headline"]),
+                pressure=pressure_reading,
             )
 
     # Bulk/overview callers (e.g. a multi-destination comparison view) pass
@@ -223,7 +231,7 @@ def calculate_place_pulse(
             environment=result.pulse.environment,
             risk=result.pulse.risk,
             economic=result.pulse.economic,
-            pressure=result.pressure,
+            pressure=pressure,
             confidence_score=result.confidence.score,
             confidence_coverage=result.confidence.coverage,
             narrative=narrative,
@@ -247,7 +255,7 @@ def calculate_place_pulse(
             score=result.confidence.score,
             coverage=result.confidence.coverage,
         ),
-        pressure=result.pressure,
+        pressure=pressure,
         trend=PulseTrendRead(
             change=result.trend.change,
             direction=result.trend.direction,

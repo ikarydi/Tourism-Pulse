@@ -24,6 +24,8 @@ from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.ingestion.eurostat.__main__ import run as run_eurostat
+from tourism_pulse_api.ingestion.eurostat.parser import eurostat_geo_code
+from tourism_pulse_api.ingestion.eurostat_regional.__main__ import run as run_eurostat_regional
 from tourism_pulse_api.ingestion.events.__main__ import run as run_events
 from tourism_pulse_api.ingestion.gdacs.__main__ import run as run_gdacs
 from tourism_pulse_api.ingestion.gdelt.__main__ import run as run_gdelt
@@ -195,13 +197,6 @@ def build_argv_ksh_capacity(db: Session) -> list[list[str]]:
 
 _EUROSTAT_METRICS = ["nights", "arrivals", "occupancy_rate", "capacity", "economic", "population"]
 
-# Eurostat's own geo codes disagree with ISO 3166-1 alpha-2 for a couple
-# of countries (documented in ingestion.eurostat.__main__'s --geo help
-# text, but that's only read by someone invoking the CLI directly - this
-# scheduler job builds --geo from Destination.country_code and needs the
-# same remapping, or it silently gets zero rows back every month for
-# whichever of these it hits).
-_ISO_TO_EUROSTAT_GEO = {"GR": "EL", "GB": "UK"}
 
 
 def build_argv_eurostat(db: Session) -> list[list[str]]:
@@ -210,7 +205,8 @@ def build_argv_eurostat(db: Session) -> list[list[str]]:
         country_code = place.destination.country_code
         if not country_code:
             continue
-        geo = _ISO_TO_EUROSTAT_GEO.get(country_code, country_code)
+        # Eurostat uses EL for Greece, not ISO's GR.
+        geo = eurostat_geo_code(country_code)
         for metric in _EUROSTAT_METRICS:
             argv.append(
                 [
@@ -223,12 +219,22 @@ def build_argv_eurostat(db: Session) -> list[list[str]]:
     return argv
 
 
+
+# --- eurostat_regional: one run covers every NUTS region --------------------
+
+
+def build_argv_eurostat_regional(db: Session) -> list[list[str]]:
+    """Annual regional indicators for all of Europe in one run, not per
+    place; weekly because Eurostat revises and releases irregularly."""
+    return [[]]
+
 # Cadences are considered starting points, not measured constants -
 # revisit once real ingestion run durations/rate limits are observed.
 # Roughly: live/fast-changing sources every 30min-2h, daily-cadence
 # content sources once a day, official-statistics sources monthly
 # (their underlying data rarely changes more often than that).
 _ONE_DAY_MINUTES = 24 * 60
+_ONE_WEEK_MINUTES = 7 * _ONE_DAY_MINUTES
 _ONE_MONTH_MINUTES = 30 * _ONE_DAY_MINUTES
 
 SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
@@ -254,5 +260,11 @@ SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
     ),
     ScheduledAdapter(
         "eurostat", run_eurostat, build_argv_eurostat, interval_minutes=_ONE_MONTH_MINUTES
+    ),
+    ScheduledAdapter(
+        "eurostat_regional",
+        run_eurostat_regional,
+        build_argv_eurostat_regional,
+        interval_minutes=_ONE_WEEK_MINUTES,
     ),
 ]

@@ -42,6 +42,16 @@ class Place(Base):
         nullable=True,
     )
 
+    # Eurostat NUTS code of the place's statistical region: NUTS 2 for
+    # destinations (assigned by point-in-polygon, see ingestion.nuts), the
+    # national NUTS 0 code for countries. Not a foreign key - national
+    # codes have no boundary row, and indicators are published for codes
+    # whether or not a boundary is loaded.
+    nuts_code: Mapped[str | None] = mapped_column(
+        String(9),
+        nullable=True,
+    )
+
     destination: Mapped["Destination"] = relationship(
         back_populates="places",
     )

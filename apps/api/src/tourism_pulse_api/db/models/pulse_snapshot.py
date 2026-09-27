@@ -60,9 +60,9 @@ class PulseSnapshot(Base):
         server_default="0",
     )
 
-    # Tourism-pressure index, reported beside the Pulse (see
-    # pulse.engine.PRESSURE_DIMENSION). Nullable: a place with no pressure
-    # signals has no pressure reading, and older snapshots predate it.
+    # Tourism-pressure score from the observatory (observatory.pressure),
+    # reported beside the Pulse. Nullable: a place without regional data
+    # has no reading, and older snapshots predate it.
     pressure: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,

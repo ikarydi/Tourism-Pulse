@@ -10,7 +10,6 @@ from tourism_pulse_api.pulse.effective_signal import (
     calculate_effective_signal,
 )
 from tourism_pulse_api.pulse.freshness import calculate_freshness
-from tourism_pulse_api.pulse.normalization import clamp
 from tourism_pulse_api.pulse.reliability import (
     get_source_reliability as get_dict_source_reliability,
 )
@@ -29,8 +28,10 @@ class SignalInput:
 # Tourism pressure (visitor load on residents and infrastructure) is
 # reported next to the Pulse, never blended into it: for a hotel high
 # demand is good news, for residents high pressure is the problem, so one
-# "higher is better" composite cannot carry both. Higher pressure always
-# means more strain.
+# "higher is better" composite cannot carry both. Signals mapped to this
+# dimension (visitor_pressure) are raw evidence only - the pressure score
+# itself comes from the observatory's official regional indicators
+# (observatory.pressure).
 PRESSURE_DIMENSION = "pressure"
 
 
@@ -39,9 +40,6 @@ class EngineResult:
     pulse: PulseResult
     confidence: ConfidenceResult
     trend: TrendResult
-    # 0-100, or None when the place has no pressure signals - never a
-    # misleading 0.
-    pressure: float | None = None
 
 
 class PulseEngine:
@@ -64,9 +62,6 @@ class PulseEngine:
         signals: list[SignalInput],
         previous_pulse: float | None = None,
     ) -> EngineResult:
-        pressure_signals = [
-            signal for signal in signals if signal.dimension == PRESSURE_DIMENSION
-        ]
         signals = [
             signal for signal in signals if signal.dimension != PRESSURE_DIMENSION
         ]
@@ -187,24 +182,4 @@ class PulseEngine:
             pulse=pulse,
             confidence=confidence,
             trend=trend,
-            pressure=self._pressure(pressure_signals),
         )
-
-    def _pressure(self, signals: list[SignalInput]) -> float | None:
-        """Same freshness * reliability weighted mean as a Pulse dimension."""
-        weights = [
-            calculate_freshness(signal.age_hours, signal.half_life_hours)
-            * self._reliability_lookup(signal.source)
-            for signal in signals
-        ]
-        weight_total = sum(weights)
-
-        if not weight_total:
-            return None
-
-        value = sum(
-            clamp(signal.normalized_value) * weight
-            for signal, weight in zip(signals, weights, strict=True)
-        ) / weight_total
-
-        return round(value * 100, 2)
