@@ -47,6 +47,9 @@ export type Pulse = {
   pulse: number
   dimensions: PulseDimensions
   confidence: { score: number; coverage: number }
+  // Tourism-pressure index, 0-100 (higher = more strain on residents).
+  // Reported beside the Pulse, never part of it; null without pressure data.
+  pressure: number | null
   trend: { change: number; direction: string }
   interpretation: {
     headline: string
@@ -71,6 +74,7 @@ export type PulseSnapshot = {
   environment: number
   risk: number
   economic: number
+  pressure: number | null
   confidence_score: number
   confidence_coverage: number
   narrative: string | null

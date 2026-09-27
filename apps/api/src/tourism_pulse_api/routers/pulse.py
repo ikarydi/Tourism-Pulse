@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from tourism_pulse_api.db.models import Event, Place, PulseSnapshot, Signal
 from tourism_pulse_api.db.session import get_db
 from tourism_pulse_api.pulse.anomaly import detect_anomaly
-from tourism_pulse_api.pulse.engine import PulseEngine
+from tourism_pulse_api.pulse.engine import PRESSURE_DIMENSION, PulseEngine
 from tourism_pulse_api.pulse.event_adapter import event_to_signal
 from tourism_pulse_api.pulse.insights import build_all_dimension_evidence
 from tourism_pulse_api.pulse.interpretation import interpret_pulse
@@ -128,7 +128,9 @@ def calculate_place_pulse(
         if event_signal is not None
     )
 
-    if not processed_signals:
+    # Pressure signals feed the separate pressure index, so on their own
+    # they cannot produce a Pulse.
+    if not any(signal.dimension != PRESSURE_DIMENSION for signal in processed_signals):
         raise HTTPException(
             status_code=422,
             detail="No signals or events available for this place",
@@ -172,6 +174,7 @@ def calculate_place_pulse(
             db,
             place_id=place_id,
             pulse=result.pulse,
+            pressure=result.pressure,
             signals=signals,
             events=events,
         )
@@ -220,6 +223,7 @@ def calculate_place_pulse(
             environment=result.pulse.environment,
             risk=result.pulse.risk,
             economic=result.pulse.economic,
+            pressure=result.pressure,
             confidence_score=result.confidence.score,
             confidence_coverage=result.confidence.coverage,
             narrative=narrative,
@@ -243,6 +247,7 @@ def calculate_place_pulse(
             score=result.confidence.score,
             coverage=result.confidence.coverage,
         ),
+        pressure=result.pressure,
         trend=PulseTrendRead(
             change=result.trend.change,
             direction=result.trend.direction,

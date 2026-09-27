@@ -1,5 +1,7 @@
 """Normalizes a place's tourist-nights-per-resident ratio ("visitor
-pressure") into a 0-1 Pulse Engine input for the `capacity` dimension.
+pressure") into a 0-1 input for the tourism-pressure index, which the
+engine reports next to the Pulse rather than inside it (see
+pulse.engine.PRESSURE_DIMENSION). Higher means more strain.
 
 Reuses `pulse.poi_density`'s saturating-log formula: an unbounded ratio
 where sustained tourism activity relative to the resident population

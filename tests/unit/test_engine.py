@@ -207,3 +207,51 @@ def test_fresher_signal_outweighs_stale_one_in_same_dimension() -> None:
 
     # weights 1.0 and 0.5 -> (0.2 * 1.0 + 0.8 * 0.5) / 1.5 = 0.4
     assert result.pulse.demand == pytest.approx(40.0)
+
+
+def test_pressure_is_reported_beside_the_pulse_not_inside_it() -> None:
+    engine = PulseEngine()
+    demand = SignalInput(
+        dimension="demand",
+        normalized_value=0.5,
+        age_hours=0,
+        half_life_hours=24,
+        source="government",
+    )
+
+    without_pressure = engine.calculate(signals=[demand])
+    with_pressure = engine.calculate(
+        signals=[
+            demand,
+            SignalInput(
+                dimension="pressure",
+                normalized_value=0.9,
+                age_hours=0,
+                half_life_hours=720,
+                source="government",
+            ),
+        ]
+    )
+
+    assert without_pressure.pressure is None
+    assert with_pressure.pressure == pytest.approx(90.0)
+    # Pressure changes neither the composite, any dimension, nor confidence.
+    assert with_pressure.pulse == without_pressure.pulse
+    assert with_pressure.confidence == without_pressure.confidence
+
+
+def test_pressure_signals_alone_cannot_produce_a_pulse() -> None:
+    engine = PulseEngine()
+
+    with pytest.raises(ValueError):
+        engine.calculate(
+            signals=[
+                SignalInput(
+                    dimension="pressure",
+                    normalized_value=0.9,
+                    age_hours=0,
+                    half_life_hours=720,
+                    source="government",
+                )
+            ]
+        )

@@ -153,7 +153,11 @@ export function DetailPage({ place }: { place: Place }) {
       </div>
 
       <div className="detail-grid">
-        <DemographicsCard demographics={demographics} visitorPressureSignal={visitorPressureSignal} />
+        <DemographicsCard
+          demographics={demographics}
+          visitorPressureSignal={visitorPressureSignal}
+          pressureIndex={pulse.pressure ?? null}
+        />
         <EconomicCard
           turnoverSignal={turnoverSignal}
           relatedArticles={pulse.evidence?.economic?.related_articles ?? []}

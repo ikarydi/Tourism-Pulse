@@ -83,6 +83,10 @@ class PulseRead(BaseModel):
     pulse: float
     dimensions: PulseDimensionsRead
     confidence: PulseConfidenceRead
+    # Tourism-pressure index (0-100, higher = more strain on residents),
+    # reported beside the Pulse and never blended into it. None when the
+    # place has no pressure signals.
+    pressure: float | None = None
     trend: PulseTrendRead
     interpretation: PulseInterpretationRead
     # Both optional: only computed on the persist=true path (the "real"

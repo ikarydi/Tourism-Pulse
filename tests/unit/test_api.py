@@ -674,3 +674,60 @@ def test_pulse_trend_uses_previous_snapshot() -> None:
 
     assert trend["direction"] == "up"
     assert trend["change"] > 0
+
+
+def test_visitor_pressure_feeds_pressure_index_not_capacity() -> None:
+    destination_id = client.post(
+        "/destinations",
+        json={"country_code": "HU", "name": "Test Pressure Destination"},
+    ).json()["id"]
+    place_id = client.post(
+        f"/destinations/{destination_id}/places",
+        json={"name": "Test Pressure Place", "place_type": "destination"},
+    ).json()["id"]
+    observed_at = datetime.now(UTC).isoformat()
+
+    for signal in (
+        {"signal_type": "occupancy", "value": 70, "unit": "percent"},
+        {"signal_type": "visitor_pressure", "value": 2.5, "unit": "nights_per_resident"},
+    ):
+        response = client.post(
+            f"/places/{place_id}/signals",
+            json={**signal, "observed_at": observed_at, "source": "government"},
+        )
+        assert response.status_code == 201
+
+    pulse = client.get(f"/places/{place_id}/pulse").json()
+
+    assert pulse["pressure"] is not None
+    assert pulse["pressure"] > 50.0
+    # Capacity has no signal of its own here, so it stays unfed.
+    assert pulse["dimensions"]["capacity"] == 0.0
+    assert "pressure" in pulse["evidence"]
+
+    history = client.get(f"/places/{place_id}/pulse/history").json()
+    assert history[0]["pressure"] == pulse["pressure"]
+
+
+def test_pressure_signal_alone_does_not_produce_a_pulse() -> None:
+    destination_id = client.post(
+        "/destinations",
+        json={"country_code": "HU", "name": "Test Pressure Only Destination"},
+    ).json()["id"]
+    place_id = client.post(
+        f"/destinations/{destination_id}/places",
+        json={"name": "Test Pressure Only Place", "place_type": "destination"},
+    ).json()["id"]
+
+    client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "visitor_pressure",
+            "value": 2.5,
+            "unit": "nights_per_resident",
+            "observed_at": datetime.now(UTC).isoformat(),
+            "source": "government",
+        },
+    )
+
+    assert client.get(f"/places/{place_id}/pulse").status_code == 422
