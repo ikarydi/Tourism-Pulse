@@ -13,8 +13,14 @@ stopped.
 
 Run: python -m research.nowcast.gkg   (from the repo root)
 Writes research/nowcast/data/gdelt.csv in the schema backtest.py reads.
+
+    python -m research.nowcast.gkg --phase 2
+
+adds the pre-COVID span (PREREGISTRATION.md, phase 2) and writes
+data/gdelt_full.csv instead; cached 2022+ days are reused.
 """
 
+import argparse
 import io
 import json
 import time
@@ -34,6 +40,10 @@ CACHE_DIR = DATA_DIR / "gkg_cache"
 # months would only feed samples the COVID exclusion drops anyway, except
 # 2018-2020 pre-COVID training history, traded away for a ~1 h faster build.
 START = date(2022, 1, 1)
+# Phase 2 adds the pre-COVID span. 2020-03 .. 2021-12 stays skipped: it
+# only feeds samples the COVID exclusion drops.
+PRE_COVID_START = date(2017, 1, 1)
+PRE_COVID_END = date(2020, 2, 29)
 WORKERS = 14
 
 TOURISM_THEMES = frozenset(
@@ -147,9 +157,19 @@ def build_monthly(days: dict[date, dict | None]) -> pd.DataFrame:
 
 def main() -> None:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--phase", choices=("1", "2"), default="1")
+    args = parser.parse_args()
+
+    def span(first: date, last: date) -> list[date]:
+        return [first + timedelta(days=i) for i in range((last - first).days + 1)]
+
     # Yesterday is the last complete daily file.
-    end = date.today() - timedelta(days=1)
-    all_days = [START + timedelta(days=i) for i in range((end - START).days + 1)]
+    all_days = span(START, date.today() - timedelta(days=1))
+    output, missing_file = "gdelt.csv", "gdelt_missing_days.txt"
+    if args.phase == "2":
+        all_days = span(PRE_COVID_START, PRE_COVID_END) + all_days
+        output, missing_file = "gdelt_full.csv", "gdelt_full_missing_days.txt"
 
     results: dict[date, dict | None] = {}
     started = time.time()
@@ -164,15 +184,13 @@ def main() -> None:
 
     missing = sorted(day for day, summary in results.items() if summary is None)
     monthly = build_monthly(results)
-    monthly.to_csv(DATA_DIR / "gdelt.csv", index=False)
+    monthly.to_csv(DATA_DIR / output, index=False)
     print(
-        f"gdelt.csv: {len(monthly)} rows, {monthly['month'].min()}..{monthly['month'].max()}; "
+        f"{output}: {len(monthly)} rows, {monthly['month'].min()}..{monthly['month'].max()}; "
         f"{len(missing)} missing days"
     )
     if missing:
-        (DATA_DIR / "gdelt_missing_days.txt").write_text(
-            "\n".join(f"{day:%Y-%m-%d}" for day in missing) + "\n"
-        )
+        (DATA_DIR / missing_file).write_text("\n".join(f"{day:%Y-%m-%d}" for day in missing) + "\n")
 
 
 if __name__ == "__main__":
