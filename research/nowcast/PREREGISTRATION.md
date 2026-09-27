@@ -138,3 +138,21 @@ about 2 h 10 min for the full span; from 2022-01 it is ~47 GB, about
 
 Models, periods, metrics, selection rule and gate are otherwise
 unchanged. A later robustness check may backfill 2017-2021.
+
+## Phase 2: pre-COVID GDELT robustness check
+
+Defined 2026-09-27, before any phase 1 result (at the project owner's
+request: phase 1 first, pre-COVID GDELT second).
+
+- **Data:** GDELT per Amendment 1 for 2017-01 .. 2020-02 plus the
+  phase 1 span (2022-01 onward), written to `data/gdelt_full.csv`.
+  2020-03 .. 2021-12 is skipped: those months only feed samples the
+  COVID exclusion drops.
+- **Procedure:** re-run the development period with the same selection
+  rule, then the holdout with the phase 2 primary model and baseline.
+  Results go to `results/*_phase2*`.
+- **Status:** phase 1's holdout result is the gate verdict. Phase 2
+  answers one question: does the longer GDELT training history change
+  the model choice or the holdout conclusion? Since the holdout will
+  already have been seen in phase 1, phase 2 is a robustness check, not
+  a fresh confirmatory test, and cannot overturn a failed gate on its own.

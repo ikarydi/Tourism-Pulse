@@ -60,10 +60,10 @@ def in_covid(month: pd.Period) -> bool:
     return COVID[0] <= month <= COVID[1]
 
 
-def load_panel() -> dict[str, pd.DataFrame]:
+def load_panel(gdelt_file: str = "gdelt.csv") -> dict[str, pd.DataFrame]:
     nights = pd.read_csv(DATA_DIR / "nights.csv")
     views = pd.read_csv(DATA_DIR / "pageviews.csv")
-    gdelt_path = DATA_DIR / "gdelt.csv"
+    gdelt_path = DATA_DIR / gdelt_file
     # GDELT's API is slow to backfill; without it the GDELT models simply
     # produce no forecasts (useful for pipeline checks, never for selection).
     gdelt = (
@@ -192,8 +192,8 @@ def airline_forecasts(args: tuple[str, pd.Series, list[pd.Period]]) -> dict:
     return geo, out
 
 
-def run(period: str) -> pd.DataFrame:
-    panel = load_panel()
+def run(period: str, gdelt_file: str = "gdelt.csv") -> pd.DataFrame:
+    panel = load_panel(gdelt_file)
     start, end = PERIODS[period]
     targets = pd.period_range(start, end, freq="M")
     origins = sorted({t - h for t in targets for h in HORIZONS})
@@ -306,12 +306,18 @@ def summarise(errors: pd.DataFrame, models: tuple[str, ...]) -> pd.DataFrame:
 
 
 def write_report(
-    period: str, errors: pd.DataFrame, primary: str | None, baseline: str | None
+    period: str,
+    errors: pd.DataFrame,
+    primary: str | None,
+    baseline: str | None,
+    label: str = "",
 ) -> str:
     RESULTS_DIR.mkdir(exist_ok=True)
-    errors.to_csv(RESULTS_DIR / f"{period}_errors.csv", index=False)
+    name = f"{period}{label}"
+    errors.to_csv(RESULTS_DIR / f"{name}_errors.csv", index=False)
 
-    lines = [f"# Nowcast backtest: {period}", ""]
+    suffix = " (phase 2: pre-COVID GDELT)" if label else ""
+    lines = [f"# Nowcast backtest: {period}{suffix}", ""]
     start, end = PERIODS[period]
     lines.append(f"Target months {start} .. {end}, horizons {HORIZONS}.")
     lines.append("")
@@ -320,7 +326,7 @@ def write_report(
     # model could forecast - GDELT models need 2018+ history).
     mase = summarise(errors, MODELS)
     relative = mase.div(mase["SN"], axis=0)
-    mase.to_csv(RESULTS_DIR / f"{period}_mase.csv")
+    mase.to_csv(RESULTS_DIR / f"{name}_mase.csv")
     lines += [
         "## MASE by model (common sample, all countries)",
         "",
@@ -385,7 +391,7 @@ def write_report(
                 }
             )
         verdict = pd.DataFrame(rows).set_index("geo")
-        verdict.to_csv(RESULTS_DIR / f"{period}_verdict.csv")
+        verdict.to_csv(RESULTS_DIR / f"{name}_verdict.csv")
         n = len(verdict)
         beat_sn = int((verdict["rel_sn"] <= 0.90).sum())
         beat_base = int((verdict["rel_base"] < 1.0).sum())
@@ -425,7 +431,7 @@ def write_report(
         lines.append(f"| {geo} | " + " | ".join(f"{row[m]:.3f}" for m in MODELS) + " |")
 
     report = "\n".join(lines) + "\n"
-    (RESULTS_DIR / f"{period}.md").write_text(report)
+    (RESULTS_DIR / f"{name}.md").write_text(report)
     return report
 
 
@@ -434,13 +440,20 @@ def main() -> None:
     parser.add_argument("--period", choices=sorted(PERIODS), required=True)
     parser.add_argument("--primary", choices=ALT_MODELS)
     parser.add_argument("--baseline", choices=BASELINES[1:])
+    parser.add_argument(
+        "--phase",
+        choices=("1", "2"),
+        default="1",
+        help="2 = pre-COVID GDELT robustness check (data/gdelt_full.csv)",
+    )
     args = parser.parse_args()
 
     if args.period == "holdout" and not (args.primary and args.baseline):
         parser.error("holdout requires --primary and --baseline chosen on dev")
 
-    errors = run(args.period)
-    print(write_report(args.period, errors, args.primary, args.baseline))
+    gdelt_file, label = ("gdelt_full.csv", "_phase2") if args.phase == "2" else ("gdelt.csv", "")
+    errors = run(args.period, gdelt_file)
+    print(write_report(args.period, errors, args.primary, args.baseline, label))
 
 
 if __name__ == "__main__":
