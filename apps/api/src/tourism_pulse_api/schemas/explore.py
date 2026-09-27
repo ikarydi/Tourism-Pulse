@@ -50,6 +50,9 @@ class PlaceRefRead(BaseModel):
     name: str
     place_type: str
     country_code: str | None = None
+    # For map charts; countries have no single point.
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class CatalogRead(BaseModel):

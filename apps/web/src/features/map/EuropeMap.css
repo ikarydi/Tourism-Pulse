@@ -2,35 +2,24 @@
   margin-top: var(--space-2);
 }
 
+/* Contained in the content column: the old full-bleed (100vw) layout
+   slid the map under the sidebar, which then could not be clicked. */
 .map-viewport {
   position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
 }
 
 .map-frame {
   position: relative;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .europe-map {
-  height: calc(100vh - 260px);
+  height: calc(100vh - 230px);
   min-height: 480px;
   width: 100%;
   background: #050a10;
-}
-
-/* Keyless outline basemap (see LandBasemap): land a step above the sea,
-   borders at the app's border tone. CSS rules win over Leaflet's inline
-   SVG presentation attributes. */
-.europe-map .basemap-land {
-  fill: #13212f;
-  fill-opacity: 1;
-  stroke: rgba(163, 196, 224, 0.22);
-  stroke-width: 0.6;
 }
 
 .map-footnote {

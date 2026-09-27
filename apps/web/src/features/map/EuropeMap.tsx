@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { FeatureCollection } from 'geojson'
-import { CircleMarker, GeoJSON, MapContainer } from 'react-leaflet'
+import { CircleMarker, MapContainer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getPlacePulseSummary } from '../../api/pulse'
 import { DIMENSIONS } from '../../lib/dimensions'
@@ -8,47 +7,13 @@ import { formatChange, scoreStatus } from '../../lib/format'
 import type { Place } from '../../types/place'
 import type { Pulse } from '../../types/pulse'
 import './EuropeMap.css'
+import { LandBasemap } from './LandBasemap'
 
 // Centered/zoomed to frame continental Europe at a glance.
 const EUROPE_CENTER: [number, number] = [54, 15]
 const EUROPE_ZOOM = 4
 // The outline basemap is 1:50m; past this zoom its coastlines look coarse.
 const MAX_ZOOM = 8
-
-// Keyless basemap: Natural Earth land outlines (public domain), built by
-// scripts/build_basemap.py and served from public/. CARTO's free tiles
-// started returning an "API key required" watermark, and the map never
-// needed more than dark land on dark sea - its markers carry the data.
-const BASEMAP_URL = '/basemap/europe-land.geojson'
-
-function LandBasemap() {
-  const [land, setLand] = useState<FeatureCollection | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    fetch(BASEMAP_URL)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: FeatureCollection | null) => {
-        if (!cancelled) setLand(data)
-      })
-      .catch(() => {
-        // Without the basemap the markers still work on the plain sea colour.
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!land) return null
-  return (
-    <GeoJSON
-      data={land}
-      interactive={false}
-      attribution='<a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer">Natural Earth</a>'
-      style={{ className: 'basemap-land' }}
-    />
-  )
-}
 
 type LocatedPlace = Place & { latitude: number; longitude: number }
 

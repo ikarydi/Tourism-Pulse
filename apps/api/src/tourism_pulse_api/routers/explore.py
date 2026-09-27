@@ -29,6 +29,8 @@ def _place_ref(place) -> PlaceRefRead:
         name=place.name,
         place_type=place.place_type,
         country_code=place.destination.country_code if place.destination else None,
+        latitude=place.latitude,
+        longitude=place.longitude,
     )
 
 

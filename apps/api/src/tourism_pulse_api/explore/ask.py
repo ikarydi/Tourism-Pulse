@@ -45,7 +45,11 @@ Answer with one JSON object and nothing else:
     }
   }
 }
-Rules: use only ids that appear in METRICS and PLACES. Trends over time: line
+Rules: use only ids that appear in METRICS and PLACES. Set "places" only when the
+question names specific places; for "cities" use places null with place_type
+"destination", for "countries" places null with place_type "country", for
+everything places null with place_type null. In "title" and "explanation" refer
+to metrics by their labels, never by their ids. Trends over time: line
 (x=time). Comparing places on one metric: bar (x=place). Relationship between two
 metrics across places: scatter (x=place, first metric on the x axis, second on the
 y axis). Many places over time: heatmap. Geographic view of one metric: map.

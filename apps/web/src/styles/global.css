@@ -195,3 +195,179 @@ a {
   color: var(--dim-economic);
   background: color-mix(in srgb, var(--dim-economic) 14%, transparent);
 }
+
+/* Keyless outline basemap (features/map/LandBasemap): land a step above the sea,
+   borders at the app's border tone. CSS rules win over Leaflet's inline
+   SVG presentation attributes. */
+.leaflet-container .basemap-land {
+  fill: #13212f;
+  fill-opacity: 1;
+  stroke: rgba(163, 196, 224, 0.22);
+  stroke-width: 0.6;
+}
+
+
+/* --- shared controls (Explore, Dashboard, command palette) --- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #05202a;
+}
+
+.button.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.button.ghost {
+  background: transparent;
+}
+
+.button.danger:hover:not(:disabled) {
+  border-color: var(--status-bad);
+  color: var(--status-bad);
+}
+
+.button:focus-visible,
+.field:focus-visible,
+.chip:focus-visible,
+.segmented button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.field {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  padding: 7px 10px;
+  color-scheme: dark;
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.segmented button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.chip.chip-more {
+  border-style: dashed;
+  color: var(--accent);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -400px 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton {
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--surface) 0, var(--surface-raised) 50%, var(--surface) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-good);
+  box-shadow: 0 0 8px var(--status-good);
+  flex-shrink: 0;
+}
+
+.live-dot.busy {
+  background: var(--status-warn);
+  box-shadow: 0 0 8px var(--status-warn);
+}
+
+.live-dot.off {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--status-bad);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
