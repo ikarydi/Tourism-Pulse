@@ -41,6 +41,28 @@ INDICATOR_DEFINITIONS: dict[str, str] = {
     ),
 }
 
+# Economic dependence, reported beside the pressure score and never part of
+# it: how much of the region's economy sits in the sectors visitors use.
+DEPENDENCE_LABELS: dict[str, str] = {
+    "gva_share_g_i": "Output in trade, transport and hospitality",
+    "employment_share_g_i": "Jobs in trade, transport and hospitality",
+}
+
+DEPENDENCE_DEFINITIONS: dict[str, str] = {
+    "gva_share_g_i": (
+        "Gross value added in wholesale and retail trade, transport, accommodation and "
+        "food service (NACE G-I) as a share of the region's total. Broader than tourism: "
+        "Eurostat's regional accounts have no finer split."
+    ),
+    "employment_share_g_i": (
+        "People employed in the same sectors as a share of all employed residents "
+        "(labour force survey, NUTS 2 at the finest)."
+    ),
+}
+
+_LABELS = {**INDICATOR_LABELS, **DEPENDENCE_LABELS}
+_DEFINITIONS = {**INDICATOR_DEFINITIONS, **DEPENDENCE_DEFINITIONS}
+
 LEVEL_NAMES = {2: "country", 3: "NUTS 1 region", 4: "NUTS 2 region", 5: "NUTS 3 region"}
 
 # Percentile bands: "high" means among the top 30% of comparable regions.
@@ -84,6 +106,7 @@ class PressureReading:
     score: float | None
     level: str | None
     method: str = METHOD
+    dependence: list[IndicatorReading] = field(default_factory=list)
 
 
 @dataclass
@@ -124,8 +147,8 @@ def _make_reading(
     )
     return IndicatorReading(
         indicator=indicator,
-        label=INDICATOR_LABELS[indicator],
-        definition=INDICATOR_DEFINITIONS[indicator],
+        label=_LABELS[indicator],
+        definition=_DEFINITIONS[indicator],
         value=value,
         unit=unit,
         year=year,
@@ -140,7 +163,12 @@ def _make_reading(
     )
 
 
-def _assemble(codes: list[str], readings: list[IndicatorReading], region_name) -> PressureReading:
+def _assemble(
+    codes: list[str],
+    readings: list[IndicatorReading],
+    region_name,
+    dependence: list[IndicatorReading] | None = None,
+) -> PressureReading:
     score = (
         round(sum(reading.percentile for reading in readings) / len(readings), 1)
         if readings
@@ -156,6 +184,7 @@ def _assemble(codes: list[str], readings: list[IndicatorReading], region_name) -
         indicators=readings,
         score=score,
         level=pressure_level(score) if score is not None else None,
+        dependence=dependence or [],
     )
 
 
@@ -209,7 +238,12 @@ def pressure_for_codes(
         for indicator in INDICATOR_LABELS
         if (reading := _reading(db, codes, indicator, cache)) is not None
     ]
-    return _assemble(codes, readings, lambda code: _region_name(db, code))
+    dependence = [
+        reading
+        for indicator in DEPENDENCE_LABELS
+        if (reading := _reading(db, codes, indicator, cache)) is not None
+    ]
+    return _assemble(codes, readings, lambda code: _region_name(db, code), dependence)
 
 
 def pressure_for_region(db: Session, nuts_code: str) -> PressureReading:
@@ -280,7 +314,12 @@ class Ranker:
             for indicator in INDICATOR_LABELS
             if (reading := self._reading(codes, indicator)) is not None
         ]
-        return _assemble(codes, readings, self._names.get)
+        dependence = [
+            reading
+            for indicator in DEPENDENCE_LABELS
+            if (reading := self._reading(codes, indicator)) is not None
+        ]
+        return _assemble(codes, readings, self._names.get, dependence)
 
     def pressure_for_place(self, place: Place) -> PressureReading | None:
         codes = place_codes(place)

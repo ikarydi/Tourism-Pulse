@@ -27,6 +27,11 @@ class Series:
     split_dim: str | None = None
     kinds: tuple[str, ...] = (COUNTRY, REGION, AREA)
     geo_dim: str = "geo"
+    # Rates of change can be negative; counts and indices cannot.
+    allow_negative: bool = False
+    # Written as parts of signal_types' single signal, keyed by this
+    # dimension, into signal_breakdowns instead of signals.
+    breakdown_dim: str | None = None
 
     def url(self) -> str:
         params = "".join(
@@ -116,6 +121,60 @@ SERIES: list[Series] = [
     ),
 ]
 
+# Consumer prices (HICP, COICOP 2018 since 2026; prc_hicp_midx stopped at
+# 2025-12): everything, accommodation, restaurants and cafés, air fares.
+_PRICE_ITEMS = {
+    "TOTAL": "all",
+    "CP1120": "accommodation",
+    "CP111": "restaurants",
+    "CP0733": "air_fares",
+}
+SERIES += [
+    Series(
+        "price_index",
+        "prc_hicp_minr",
+        {"unit": "I25", "coicop18": tuple(_PRICE_ITEMS)},
+        "2010-01",
+        {code: (f"price_index_{name}", "index_2025") for code, name in _PRICE_ITEMS.items()},
+        split_dim="coicop18",
+        kinds=(COUNTRY,),
+    ),
+    Series(
+        "price_change",
+        "prc_hicp_minr",
+        {"unit": "RCH_A", "coicop18": tuple(_PRICE_ITEMS)},
+        "2010-01",
+        {code: (f"price_change_{name}", "percent") for code, name in _PRICE_ITEMS.items()},
+        split_dim="coicop18",
+        kinds=(COUNTRY,),
+        allow_negative=True,
+    ),
+    # Net turnover, not adjusted (Portugal publishes no adjusted series).
+    Series(
+        "hospitality_turnover",
+        "sts_setu_m",
+        {"indic_bt": "NETTUR", "nace_r2": ("I55", "I56"), "s_adj": "NSA", "unit": "I21"},
+        "2010-01",
+        {
+            "I55": ("accommodation_turnover_index", "index_2021"),
+            "I56": ("food_service_turnover_index", "index_2021"),
+        },
+        split_dim="nace_r2",
+        kinds=(COUNTRY,),
+    ),
+    # Nights by the guests' country of residence, a breakdown of the
+    # country's annual nights.
+    Series(
+        "nights_by_origin",
+        "tour_occ_ninraw",
+        {"unit": "NR", "nace_r2": "I551-I553"},
+        "2014",
+        _single("tourism_nights_annual", "nights"),
+        kinds=(COUNTRY,),
+        breakdown_dim="c_resid",
+    ),
+]
+
 POPULATION = Series(
     "population",
     "demo_r_pjanaggr3",
@@ -132,6 +191,19 @@ class Record:
     unit: str
     observed_at: datetime
     value: float
+    # Set for breakdown series: the category along breakdown_dim.
+    key: str | None = None
+
+
+def origin_key(code: str) -> str | None:
+    """Eurostat's c_resid code -> breakdown key: a country code, "CH" for
+    Switzerland with Liechtenstein, "domestic" for the reporting country's
+    own residents. Continental aggregates are left out."""
+    if code == "DOM":
+        return "domestic"
+    if code == "CH_LI":
+        return "CH"
+    return code if len(code) == 2 and code.isalpha() else None
 
 
 def _period_end(time: str, month: str | None) -> datetime | None:
@@ -154,8 +226,14 @@ def parse_series(series: Series, payload: dict) -> list[Record]:
         code = cell.get(series.geo_dim, "")
         if "_" in code or len(code) < 2 or code[:2] not in EU27:
             continue
-        if not math.isfinite(value) or value < 0:
+        if not math.isfinite(value) or (value < 0 and not series.allow_negative):
             continue
+        key = None
+        if series.breakdown_dim:
+            key = origin_key(cell.get(series.breakdown_dim, ""))
+            # The reporting country's own code repeats its domestic nights.
+            if key is None or key == code:
+                continue
         month = cell.get("month")
         if month == "TOTAL" and series.dataset == "tour_occ_nin2m":
             continue  # the yearly total; months are loaded individually
@@ -168,5 +246,5 @@ def parse_series(series: Series, payload: dict) -> list[Record]:
         if observed_at is None:
             continue
         signal_type, unit = mapping
-        records.append(Record(code, signal_type, unit, observed_at, value))
+        records.append(Record(code, signal_type, unit, observed_at, value, key))
     return records

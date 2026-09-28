@@ -20,6 +20,7 @@ import type { Observatory } from '../types/observatory'
 import type { Place } from '../types/place'
 import type { DimensionKey, Pulse, PulseAnomaly, PulseSnapshot, PulseTrend } from '../types/pulse'
 import { AttentionPanel } from '../components/AttentionPanel'
+import { InboundEconomyPanel } from '../components/InboundEconomyPanel'
 import { ForecastCard } from '../components/ForecastCard'
 import { PlaceContext } from '../components/PlaceContext'
 import { PlaceStatistics } from '../components/PlaceStatistics'
@@ -161,6 +162,7 @@ function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace, o
         <PlaceContext place={place} places={places} onSelectPlace={onSelectPlace} />
         <ForecastCard placeId={place.id} onOpenOutlook={onOpenOutlook} />
         <AttentionPanel placeId={place.id} compact />
+        <InboundEconomyPanel placeId={place.id} />
         <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
       </div>
     )
@@ -210,6 +212,7 @@ function CuratedDetail({ place, places, catalog, onOpenExplore, onSelectPlace, o
 
       <ForecastCard placeId={place.id} onOpenOutlook={onOpenOutlook} />
       <AttentionPanel placeId={place.id} compact />
+      <InboundEconomyPanel placeId={place.id} />
 
       <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
 

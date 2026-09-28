@@ -23,11 +23,20 @@ PLATFORM_SCOPE: dict[str, str | tuple[str, ...]] = {
     "unit": "NR",
 }
 
+# Economic dependence: NACE G-I (trade, transport, accommodation and food
+# service) as a share of the whole economy. Eurostat's regional accounts
+# publish no finer split, so this is broader than tourism.
+GVA_REGIONAL_DATASET = "nama_10r_3gva"
+EMPLOYMENT_REGIONAL_DATASET = "lfst_r_lfe2en2"
+SECTOR_SCOPE: dict[str, str | tuple[str, ...]] = {"nace_r2": ("TOTAL", "G-I")}
+
 INDICATOR_UNITS = {
     "tourism_intensity": "nights_per_1000_residents",
     "tourism_density": "nights_per_km2",
     "seasonality_peak_share": "share_of_annual_nights",
     "str_share": "share_of_nights",
+    "gva_share_g_i": "share_of_gva",
+    "employment_share_g_i": "share_of_employment",
 }
 
 _UNIT_TO_INDICATOR = {"P_THAB": "tourism_intensity", "P_KM2": "tourism_density"}
@@ -146,4 +155,23 @@ def str_share(
             continue
         share = platform_nights / (platform_nights + official_nights)
         rows.append(IndicatorValue(geo, "str_share", year, share))
+    return rows
+
+
+def sector_share(payload: dict, indicator: str) -> list[IndicatorValue]:
+    """G-I over TOTAL per (region, year), for output or employment."""
+    parts: dict[tuple[str, int], dict[str, float]] = {}
+    for cell, value in jsonstat_cells(payload):
+        sector = cell.get("nace_r2")
+        if sector not in ("TOTAL", "G-I") or not _is_region(cell["geo"]):
+            continue
+        if not math.isfinite(value) or value < 0:
+            continue
+        parts.setdefault((cell["geo"], int(cell["time"])), {})[sector] = value
+    rows = []
+    for (geo, year), values in parts.items():
+        total, sector_value = values.get("TOTAL"), values.get("G-I")
+        if total is None or sector_value is None or total <= 0 or sector_value > total:
+            continue
+        rows.append(IndicatorValue(geo, indicator, year, sector_value / total))
     return rows

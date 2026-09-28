@@ -54,3 +54,7 @@ data/gdelt_gkg_cache/
 
 # Wikipedia pageviews per article (python -m tourism_pulse_api.ingestion.wikipedia_monthly)
 data/wikipedia_monthly_cache/
+
+# EUROCONTROL yearly airport files and the business survey workbooks
+data/eurocontrol_cache/
+data/ec_survey_cache/

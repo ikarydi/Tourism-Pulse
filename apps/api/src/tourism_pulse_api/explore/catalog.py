@@ -49,6 +49,8 @@ _SUPPLY = "Supply"
 _MEDIA = "Media & events"
 _ATTENTION = "Online attention"
 _CULTURE = "Culture"
+_INBOUND = "Inbound travel"
+_ECONOMY = "Economy"
 
 _STATIC_METRICS: list[Metric] = [
     *(
@@ -112,6 +114,34 @@ _STATIC_METRICS: list[Metric] = [
                 "Short-term rental share",
                 "share of nights",
                 "Platform-booked nights as a share of platform plus official nights.",
+            ),
+        )
+    ),
+    *(
+        Metric(
+            id=f"observatory.{indicator}",
+            label=label,
+            group=_ECONOMY,
+            unit="share",
+            grain="year",
+            aggregation="avg",
+            description=description,
+            kind=INDICATOR,
+            source="Eurostat",
+            key=indicator,
+        )
+        for indicator, label, description in (
+            (
+                "gva_share_g_i",
+                "Output in trade, transport and hospitality",
+                "Share of the region's gross value added in trade, transport, accommodation "
+                "and food service (NACE G-I), for the place's NUTS 3 region (else NUTS 2). "
+                "Broader than tourism.",
+            ),
+            (
+                "employment_share_g_i",
+                "Jobs in trade, transport and hospitality",
+                "Share of employed residents working in the same sectors (NUTS 2 at the finest).",
             ),
         )
     ),
@@ -321,6 +351,118 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
         for medium in ("news", "video")
         for category in ("event", "risk", "economic")
     },
+    "flight_arrivals": (
+        "Flight arrivals",
+        _INBOUND,
+        "flights",
+        "month",
+        "sum",
+        "IFR flights landing at the place's airports (EUROCONTROL): every airport for a "
+        "country, airports with scheduled service within 50 km for a destination, those "
+        "inside a region. Airports join the data over time; compare years with the growth "
+        "series.",
+    ),
+    "flight_arrivals_growth": (
+        "Flight arrivals growth",
+        _INBOUND,
+        "% vs a year earlier",
+        "month",
+        "avg",
+        "Change in flight arrivals against the same month a year earlier, over airports "
+        "reporting in both months (EUROCONTROL).",
+    ),
+    **{
+        signal_type: (label, _ECONOMY, "balance", "month", "avg", description)
+        for signal_type, label, description in (
+            (
+                "hotel_confidence",
+                "Hotel confidence",
+                "Accommodation firms' confidence: mean of business and demand over the past "
+                "3 months and expected demand (European Commission survey; up minus down, "
+                "percentage points).",
+            ),
+            (
+                "hotel_demand_past",
+                "Hotel demand, past 3 months",
+                "Balance of accommodation firms reporting higher rather than lower demand.",
+            ),
+            (
+                "hotel_demand_expected",
+                "Hotel demand expected",
+                "Balance of accommodation firms expecting demand to rise over the next 3 months.",
+            ),
+            (
+                "hotel_employment_expected",
+                "Hotel hiring expected",
+                "Balance of accommodation firms expecting to add staff over the next 3 months.",
+            ),
+            (
+                "hotel_prices_expected",
+                "Hotel prices expected",
+                "Balance of accommodation firms expecting to raise prices over the next 3 months.",
+            ),
+            (
+                "travel_trade_confidence",
+                "Travel trade confidence",
+                "Confidence of travel agencies and tour operators (NACE 79).",
+            ),
+            (
+                "travel_trade_demand_expected",
+                "Travel trade demand expected",
+                "Balance of travel agencies and tour operators expecting demand to rise over "
+                "the next 3 months.",
+            ),
+        )
+    },
+    **{
+        f"price_index_{item}": (
+            f"{label} prices",
+            _ECONOMY,
+            "index (2025 = 100)",
+            "month",
+            "avg",
+            f"Harmonised consumer price index: {what} (Eurostat).",
+        )
+        for item, label, what in (
+            ("all", "Consumer", "all items"),
+            ("accommodation", "Accommodation", "accommodation services"),
+            ("restaurants", "Restaurant", "restaurants, cafés and similar"),
+            ("air_fares", "Air fare", "passenger transport by air"),
+        )
+    },
+    **{
+        f"price_change_{item}": (
+            f"{label} inflation",
+            _ECONOMY,
+            "% vs a year earlier",
+            "month",
+            "avg",
+            f"Annual rate of change of the consumer price index for {what} (Eurostat).",
+        )
+        for item, label, what in (
+            ("all", "Consumer", "all items"),
+            ("accommodation", "Accommodation", "accommodation services"),
+            ("restaurants", "Restaurant", "restaurants, cafés and similar"),
+            ("air_fares", "Air fare", "passenger transport by air"),
+        )
+    },
+    "accommodation_turnover_index": (
+        "Accommodation turnover",
+        _ECONOMY,
+        "index (2021 = 100)",
+        "month",
+        "avg",
+        "Net turnover of accommodation businesses (NACE I55), not seasonally adjusted (Eurostat).",
+    ),
+    "food_service_turnover_index": (
+        "Food service turnover",
+        _ECONOMY,
+        "index (2021 = 100)",
+        "month",
+        "avg",
+        "Net turnover of restaurants and other food service (NACE I56), not seasonally "
+        "adjusted (Eurostat).",
+    ),
     "hotel_count": (
         "Hotels mapped",
         _SUPPLY,
@@ -407,6 +549,8 @@ _SOURCE_NAMES = {
     "opensky": "OpenSky",
     "osm": "OpenStreetMap",
     "google_trends": "Google Trends",
+    "eurocontrol": "EUROCONTROL",
+    "european_commission": "European Commission",
 }
 
 

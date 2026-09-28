@@ -33,6 +33,9 @@ class ObservatoryRead(BaseModel):
     score: float | None = None
     level: str | None = None
     method: str | None = None
+    # Economic dependence (share of output and jobs in trade, transport and
+    # hospitality), ranked the same way but never part of the score.
+    dependence: list[IndicatorReadingRead] = []
 
     model_config = ConfigDict(from_attributes=True)
 

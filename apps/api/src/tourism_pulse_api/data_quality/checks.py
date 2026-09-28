@@ -54,6 +54,11 @@ IMPOSSIBLE_RANGE_BOUNDS: dict[str, tuple[float, float | None]] = {
     # Year-over-year % change - can be negative (a shrinking sector); a
     # generous +/-500% ceiling well beyond any plausible real swing.
     "tourism_turnover_growth": (-500.0, 500.0),
+    # HICP annual rates of change, percent (see ingestion.eurostat_bulk).
+    "price_change_all": (-100.0, 1000.0),
+    "price_change_accommodation": (-100.0, 1000.0),
+    "price_change_restaurants": (-100.0, 1000.0),
+    "price_change_air_fares": (-100.0, 1000.0),
     # Nights-per-resident ratio - always >= 0, no natural upper bound.
     "visitor_pressure": (0.0, None),
     # Per-category item counts - always >= 0, no natural upper bound.
@@ -250,10 +255,7 @@ def check_duplicate(db: Session, candidate: QualityCheckable) -> QualityCheckOut
             check_name="duplicate",
             passed=False,
             severity="warn",
-            detail=(
-                f"existing signal has value {existing.value}, "
-                f"candidate has {candidate.value}"
-            ),
+            detail=(f"existing signal has value {existing.value}, candidate has {candidate.value}"),
         )
 
     return _pass("duplicate")

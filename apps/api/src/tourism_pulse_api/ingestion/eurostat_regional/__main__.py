@@ -6,7 +6,9 @@
 Annual data; re-running overwrites values in place (Eurostat revises).
 Four datasets: official nights (intensity, density, and absolute nights
 for the short-term-rental share), official monthly nights (seasonality),
-and platform-booked nights at NUTS 1/2 and NUTS 3.
+and platform-booked nights at NUTS 1/2 and NUTS 3. Two more give economic
+dependence: regional output (NUTS 0-3) and employment (NUTS 0-2) in trade,
+transport, accommodation and food service as a share of the total.
 """
 
 import argparse
@@ -17,18 +19,22 @@ from dataclasses import dataclass
 from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.ingestion.eurostat_regional.client import fetch_dataset
 from tourism_pulse_api.ingestion.eurostat_regional.parser import (
+    EMPLOYMENT_REGIONAL_DATASET,
     EUROSTAT_SOURCE_NAME,
+    GVA_REGIONAL_DATASET,
     NIGHTS_REGIONAL_DATASET,
     NIGHTS_REGIONAL_MONTHLY_DATASET,
     OFFICIAL_SCOPE,
     PLATFORM_NUTS3_DATASET,
     PLATFORM_NUTS12_DATASET,
     PLATFORM_SCOPE,
+    SECTOR_SCOPE,
     IndicatorValue,
     dataset_url,
     parse_intensity_density,
     parse_nights,
     parse_seasonality,
+    sector_share,
     str_share,
 )
 from tourism_pulse_api.ingestion.eurostat_regional.service import upsert_indicators
@@ -76,6 +82,22 @@ def _requests(since_year: int) -> list[tuple[str, str]]:
             PLATFORM_NUTS3_DATASET,
             dataset_url(PLATFORM_NUTS3_DATASET, filters=PLATFORM_SCOPE, since_year=since_year),
         ),
+        (
+            GVA_REGIONAL_DATASET,
+            dataset_url(
+                GVA_REGIONAL_DATASET,
+                filters={**SECTOR_SCOPE, "unit": "CP_MEUR"},
+                since_year=since_year,
+            ),
+        ),
+        (
+            EMPLOYMENT_REGIONAL_DATASET,
+            dataset_url(
+                EMPLOYMENT_REGIONAL_DATASET,
+                filters={**SECTOR_SCOPE, "unit": "THS_PER", "age": "Y_GE15", "sex": "T"},
+                since_year=since_year,
+            ),
+        ),
     ]
 
 
@@ -92,6 +114,11 @@ def _derive(fetched: dict[str, Fetched]) -> None:
     for dataset in (PLATFORM_NUTS12_DATASET, PLATFORM_NUTS3_DATASET):
         platform = fetched[dataset]
         platform.values = str_share(official_nights, parse_nights(platform.payload))
+
+    gva = fetched[GVA_REGIONAL_DATASET]
+    gva.values = sector_share(gva.payload, "gva_share_g_i")
+    employment = fetched[EMPLOYMENT_REGIONAL_DATASET]
+    employment.values = sector_share(employment.payload, "employment_share_g_i")
 
 
 def run(argv: list[str] | None = None) -> int:

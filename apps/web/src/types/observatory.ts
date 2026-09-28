@@ -27,6 +27,9 @@ export type Observatory = {
   score: number | null
   level: 'low' | 'moderate' | 'high' | null
   method: string | null
+  // Share of output and jobs in trade, transport and hospitality, ranked the
+  // same way but never part of the score.
+  dependence?: IndicatorReading[]
 }
 
 // One row of GET /observatory.

@@ -52,7 +52,8 @@
 }
 
 .attention-panel.compact .attention-grid {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  /* min(): one full-width column on phones instead of overflowing the card */
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
 }
 
 .attention-block {

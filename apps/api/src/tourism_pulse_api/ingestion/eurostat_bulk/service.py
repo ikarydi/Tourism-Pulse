@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from tourism_pulse_api.data_quality.checks import IMPOSSIBLE_RANGE_BOUNDS
-from tourism_pulse_api.db.models import Place, PlaceDemographics, Signal
+from tourism_pulse_api.db.models import Place, PlaceDemographics, Signal, SignalBreakdown
 from tourism_pulse_api.ingestion.eurostat_bulk.parser import (
     AREA,
     CITY,
@@ -105,6 +105,50 @@ def upsert_signals(
                 "source_url": statement.excluded.source_url,
                 "source_observation_id": statement.excluded.source_observation_id,
             },
+        )
+        db.execute(statement)
+    db.commit()
+    summary.written = len(values)
+    return summary
+
+
+def upsert_breakdowns(
+    db: Session,
+    records: list[Record],
+    *,
+    kinds: tuple[str, ...],
+    dimension: str,
+    index: dict[str, dict[str, list[int]]],
+) -> LoadSummary:
+    """Parts of a stored signal (records with a key), e.g. a country's
+    annual nights by the guests' country of residence."""
+    summary = LoadSummary()
+    rows: dict[tuple, dict] = {}
+    for record in records:
+        place_ids = _targets(index, kinds, record.code)
+        if not place_ids:
+            summary.unmatched_codes.add(record.code)
+            continue
+        if record.key is None or not _valid(record):
+            summary.invalid += 1
+            continue
+        for place_id in place_ids:
+            rows[(place_id, record.signal_type, record.observed_at, record.key)] = {
+                "place_id": place_id,
+                "signal_type": record.signal_type,
+                "observed_at": record.observed_at,
+                "dimension": dimension,
+                "key": record.key,
+                "value": record.value,
+                "source": EUROSTAT_SOURCE_NAME,
+            }
+            summary.places.add(place_id)
+    values = list(rows.values())
+    for start in range(0, len(values), _BATCH_ROWS):
+        statement = insert(SignalBreakdown).values(values[start : start + _BATCH_ROWS])
+        statement = statement.on_conflict_do_update(
+            constraint="uq_signal_breakdowns_place_type_observed_dimension_key",
+            set_={"value": statement.excluded.value},
         )
         db.execute(statement)
     db.commit()

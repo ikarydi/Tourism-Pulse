@@ -23,14 +23,16 @@ from tourism_pulse_api.ingestion.eurostat_bulk.parser import (
 )
 from tourism_pulse_api.ingestion.eurostat_bulk.service import (
     place_index,
+    upsert_breakdowns,
     upsert_population,
     upsert_signals,
 )
 from tourism_pulse_api.ingestion.raw_archive import archive_raw_observation
+from tourism_pulse_api.ingestion.wikipedia_monthly.articles import USER_AGENT
 
 
 def _fetch(url: str) -> str:
-    request = urllib.request.Request(url, headers={"User-Agent": "tourism-pulse-ingestion/1.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=300) as response:  # noqa: S310
         return response.read().decode("utf-8")
 
@@ -72,6 +74,10 @@ def run(argv: list[str] | None = None) -> int:
             if series is POPULATION:
                 summary = upsert_population(
                     db, records, source_observation_id=observation.id, index=index
+                )
+            elif series.breakdown_dim:
+                summary = upsert_breakdowns(
+                    db, records, kinds=series.kinds, dimension="origin", index=index
                 )
             else:
                 summary = upsert_signals(

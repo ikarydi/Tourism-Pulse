@@ -20,6 +20,10 @@ export function formatIndicatorValue(reading: IndicatorReading, style: 'long' | 
       return `${numberFormatter.format(reading.value)} nights${long ? ' per 1,000 residents' : ' / 1k residents'}`
     case 'tourism_density':
       return `${numberFormatter.format(reading.value)} nights${long ? ' per km²' : ' / km²'}`
+    case 'gva_share_g_i':
+      return `${(reading.value * 100).toFixed(1)}%${long ? ' of regional output' : ' of output'}`
+    case 'employment_share_g_i':
+      return `${(reading.value * 100).toFixed(1)}%${long ? ' of employed residents' : ' of jobs'}`
     default:
       return `${numberFormatter.format(reading.value)} ${reading.unit}`
   }

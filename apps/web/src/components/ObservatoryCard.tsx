@@ -57,6 +57,38 @@ export function ObservatoryCard({
         ))}
       </ul>
 
+      {!!observatory.dependence?.length && (
+        <div className="observatory-dependence">
+          <p className="mini-label">
+            Economic dependence <span>not part of the score</span>
+          </p>
+          <ul className="observatory-indicators">
+            {observatory.dependence.map((reading) => (
+              <li key={reading.indicator} className="dependence" title={reading.definition}>
+                <div className="observatory-indicator-head">
+                  <span>{reading.label}</span>
+                  <span className="observatory-rank">
+                    #{reading.rank} of {reading.peers} · {reading.year}
+                    {reading.region_code !== observatory.nuts_code && ` · ${reading.level_name}`}
+                  </span>
+                </div>
+                <div className="observatory-track" aria-hidden="true">
+                  <span className="observatory-fill" style={{ width: `${reading.percentile}%` }} />
+                </div>
+                <div className="observatory-indicator-foot">
+                  <span>{formatIndicatorValue(reading)}</span>
+                  <span>{ordinal(reading.percentile)} percentile</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="observatory-method">
+            Trade, transport, accommodation and food service (NACE G–I) as a share of the region's economy. Broader
+            than tourism: Eurostat's regional accounts have no finer split.
+          </p>
+        </div>
+      )}
+
       {method && (
         <p className="observatory-method">
           {method} Source: {indicators[0].source === 'eurostat' ? 'Eurostat' : indicators[0].source}.

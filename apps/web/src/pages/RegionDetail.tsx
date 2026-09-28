@@ -4,6 +4,7 @@ import { getPlaceObservatory } from '../api/observatory'
 import { DemographicsCard } from '../components/DemographicsCard'
 import { ObservatoryCard } from '../components/ObservatoryCard'
 import { ForecastCard } from '../components/ForecastCard'
+import { InboundEconomyPanel } from '../components/InboundEconomyPanel'
 import { PlaceContext } from '../components/PlaceContext'
 import { PlaceStatistics } from '../components/PlaceStatistics'
 import { formatNumber } from '../lib/format'
@@ -97,6 +98,8 @@ export function RegionDetail({
         <ObservatoryCard observatory={observatory} placeName={place.name} />
         {hasDemographics && <DemographicsCard demographics={demographics ?? []} visitorPressureSignal={undefined} />}
       </div>
+
+      <InboundEconomyPanel placeId={place.id} />
 
       <PlaceStatistics place={place} catalog={catalog} onOpenExplore={onOpenExplore} />
     </div>

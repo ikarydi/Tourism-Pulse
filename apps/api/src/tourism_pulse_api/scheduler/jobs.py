@@ -29,6 +29,8 @@ from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.forecasting.__main__ import run as run_forecasting
+from tourism_pulse_api.ingestion.ec_survey.__main__ import run as run_ec_survey
+from tourism_pulse_api.ingestion.eurocontrol.__main__ import run as run_eurocontrol
 from tourism_pulse_api.ingestion.eurostat.__main__ import run as run_eurostat
 from tourism_pulse_api.ingestion.eurostat.parser import eurostat_geo_code
 from tourism_pulse_api.ingestion.eurostat_bulk.__main__ import run as run_eurostat_bulk
@@ -125,11 +127,16 @@ def build_argv_opensky(db: Session) -> list[list[str]]:
 
         argv.append(
             [
-                "--place-id", str(place.id),
-                "--lamin", str(place.latitude - half),
-                "--lamax", str(place.latitude + half),
-                "--lomin", str(place.longitude - half),
-                "--lomax", str(place.longitude + half),
+                "--place-id",
+                str(place.id),
+                "--lamin",
+                str(place.latitude - half),
+                "--lamax",
+                str(place.latitude + half),
+                "--lomin",
+                str(place.longitude - half),
+                "--lomax",
+                str(place.longitude + half),
             ]
         )
 
@@ -148,10 +155,7 @@ def build_argv_gdacs(db: Session) -> list[list[str]]:
 
 
 def build_argv_wikipedia(db: Session) -> list[list[str]]:
-    return [
-        ["--place-id", str(place.id), "--article", place.name]
-        for place in _curated_places(db)
-    ]
+    return [["--place-id", str(place.id), "--article", place.name] for place in _curated_places(db)]
 
 
 def build_argv_youtube(db: Session) -> list[list[str]]:
@@ -174,9 +178,12 @@ def build_argv_gdelt(db: Session) -> list[list[str]]:
 def build_argv_events(db: Session) -> list[list[str]]:
     return [
         [
-            "--place-id", str(place.id),
-            "--city", place.name,
-            "--country-code", place.destination.country_code,
+            "--place-id",
+            str(place.id),
+            "--city",
+            place.name,
+            "--country-code",
+            place.destination.country_code,
         ]
         for place in _curated_places(db)
         if place.place_type != "country" and place.destination.country_code
@@ -200,11 +207,7 @@ def build_argv_ksh(db: Session) -> list[list[str]]:
 
 def build_argv_ksh_capacity(db: Session) -> list[list[str]]:
     place = next(
-        (
-            p
-            for p in _country_places(db)
-            if p.destination.country_code == "HU"
-        ),
+        (p for p in _country_places(db) if p.destination.country_code == "HU"),
         None,
     )
     if place is None:
@@ -218,7 +221,6 @@ def build_argv_ksh_capacity(db: Session) -> list[list[str]]:
 _EUROSTAT_METRICS = ["nights", "arrivals", "occupancy_rate", "capacity", "economic", "population"]
 
 
-
 def build_argv_eurostat(db: Session) -> list[list[str]]:
     argv = []
     for place in _country_places(db):
@@ -230,14 +232,16 @@ def build_argv_eurostat(db: Session) -> list[list[str]]:
         for metric in _EUROSTAT_METRICS:
             argv.append(
                 [
-                    "--place-id", str(place.id),
-                    "--geo", geo,
-                    "--metric", metric,
+                    "--place-id",
+                    str(place.id),
+                    "--geo",
+                    geo,
+                    "--metric",
+                    metric,
                     "--backfill",
                 ]
             )
     return argv
-
 
 
 # --- eurostat_regional: one run covers every NUTS region --------------------
@@ -252,6 +256,7 @@ def build_argv_eurostat_regional(db: Session) -> list[list[str]]:
     """Annual regional indicators for all of Europe in one run, not per
     place; weekly because Eurostat revises and releases irregularly."""
     return [[]]
+
 
 # Cadences are considered starting points, not measured constants -
 # revisit once real ingestion run durations/rate limits are observed.
@@ -273,9 +278,7 @@ SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
     ),
     ScheduledAdapter("youtube", run_youtube, build_argv_youtube, interval_minutes=360),
     ScheduledAdapter("gdelt", run_gdelt, build_argv_gdelt, interval_minutes=360),
-    ScheduledAdapter(
-        "events", run_events, build_argv_events, interval_minutes=_ONE_DAY_MINUTES
-    ),
+    ScheduledAdapter("events", run_events, build_argv_events, interval_minutes=_ONE_DAY_MINUTES),
     ScheduledAdapter("ksh", run_ksh, build_argv_ksh, interval_minutes=_ONE_MONTH_MINUTES),
     ScheduledAdapter(
         "ksh_capacity",
@@ -306,6 +309,15 @@ SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
     ),
     ScheduledAdapter(
         "gdelt_gkg", run_gdelt_gkg, build_argv_once, interval_minutes=_ONE_DAY_MINUTES
+    ),
+    # Inbound and economic context (research/gate3): monthly flights per
+    # airport, and the Commission's tourism-sector business surveys. Both
+    # publish once a month; a weekly run picks each release up within days.
+    ScheduledAdapter(
+        "eurocontrol", run_eurocontrol, build_argv_once, interval_minutes=_ONE_WEEK_MINUTES
+    ),
+    ScheduledAdapter(
+        "ec_survey", run_ec_survey, build_argv_once, interval_minutes=_ONE_WEEK_MINUTES
     ),
     # Issues forecasts once a new official month lands; earlier live
     # forecasts are never overwritten.

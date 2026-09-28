@@ -106,3 +106,30 @@
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* Economic dependence: ranked like pressure, drawn in the neutral accent so
+   it never reads as strain. */
+.observatory-dependence {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.observatory-dependence .mini-label {
+  margin: 0;
+}
+
+.observatory-dependence .mini-label span {
+  margin-left: 6px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-faint);
+}
+
+.observatory-indicators li.dependence {
+  --bar-color: var(--accent);
+}
