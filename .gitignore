@@ -47,6 +47,7 @@ data/processed/
 
 # Raw API/file-derived caches behind research/nowcast/data/*.csv (re-fetchable)
 research/nowcast/data/*_cache/
+research/gate3/data/*_cache/
 
 # GDELT daily summaries (python -m tourism_pulse_api.ingestion.gdelt_gkg)
 data/gdelt_gkg_cache/

@@ -19,6 +19,8 @@ dependencies = [
     "groq>=1.6,<2",
     # Forecasting (tourism_pulse_api.forecasting) and attention insights.
     "numpy>=2,<3",
+    # The European Commission publishes its business surveys only as Excel.
+    "openpyxl>=3.1,<4",
     "pandas>=2.2,<3",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.7,<3",
