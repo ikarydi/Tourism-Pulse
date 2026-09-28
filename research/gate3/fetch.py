@@ -1,6 +1,7 @@
 """Build the Gate 3 data snapshots. See PREREGISTRATION.md.
 
     python -m research.gate3.fetch
+    python -m research.gate3.fetch --national   # Part 2 series only
 
 Writes, next to this file:
 
@@ -16,7 +17,9 @@ Writes, next to this file:
 Downloads are cached in data/*_cache/ (not committed).
 """
 
+import argparse
 import io
+import json
 import urllib.request
 import zipfile
 from datetime import UTC, datetime
@@ -136,9 +139,42 @@ def hotel_survey() -> pd.DataFrame:
     return survey[["geo", "month", *SURVEY_QUESTIONS.values()]].sort_values(["geo", "month"])
 
 
+# Part 2 (descriptive): national visitor series published before Eurostat.
+# Spain: INE FRONTUR, international tourists, national total (series FREG337).
+FRONTUR_URL = "https://servicios.ine.es/wstempus/js/EN/DATOS_SERIE/FREG337?nult=400"
+
+
+def national() -> pd.DataFrame:
+    request = urllib.request.Request(FRONTUR_URL, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=120) as response:  # noqa: S310
+        series = json.load(response)
+    rows = [
+        {
+            "geo": "ES",
+            "series": "frontur_tourists",
+            "month": f"{point['Anyo']:04d}-{point['FK_Periodo']:02d}",
+            "value": point["Valor"],
+        }
+        for point in series["Data"]
+        if point.get("Valor") is not None and 1 <= point["FK_Periodo"] <= 12
+    ]
+    return pd.DataFrame(rows).sort_values("month").reset_index(drop=True)
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(prog="python -m research.gate3.fetch")
+    parser.add_argument("--national", action="store_true", help="Part 2 series only")
+    args = parser.parse_args()
     DATA_DIR.mkdir(exist_ok=True)
     now = datetime.now(UTC)
+    if args.national:
+        table = national()
+        table.to_csv(DATA_DIR / "national.csv", index=False)
+        (DATA_DIR / "NATIONAL_RETRIEVED_AT").write_text(
+            f"{now:%Y-%m-%dT%H:%M:%SZ}\nINE FRONTUR FREG337 (Spain)\n"
+        )
+        print(f"national: {len(table)} months, {table['month'].min()}..{table['month'].max()}")
+        return
     flight_table = flights(now.year)
     flight_table.to_csv(DATA_DIR / "flights.csv", index=False)
     survey_table = hotel_survey()
