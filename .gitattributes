@@ -1,0 +1,6 @@
+# Research data snapshots and per-forecast error logs: reproducibility
+# artifacts, collapsed in GitHub diffs.
+research/nowcast/data/*.csv linguist-generated=true
+research/nowcast/results/*.csv linguist-generated=true
+research/gate3/data/*.csv linguist-generated=true
+research/gate3/results/*.csv linguist-generated=true

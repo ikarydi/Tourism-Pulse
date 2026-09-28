@@ -1,0 +1,118 @@
+.explore-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.chart-panel-title {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plot-figure {
+  width: 100%;
+  min-height: 60px;
+}
+
+.plot-figure svg {
+  display: block;
+}
+
+/* Plot's legends are HTML: match them to the theme. */
+.plot-figure [class^='plot-'][class$='-swatches'] {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.chart-footnote {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.chart-note {
+  color: var(--status-warn);
+}
+
+.chart-empty {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: var(--space-5);
+}
+
+.chart-table-wrap {
+  overflow-x: auto;
+  max-height: 460px;
+}
+
+.chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  text-align: left;
+  color: var(--text-faint);
+  font-weight: 600;
+  font-size: 11px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  min-width: 90px;
+  vertical-align: bottom;
+}
+
+.chart-table th span {
+  display: block;
+  font-weight: 400;
+  font-size: 10px;
+}
+
+.chart-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.chart-table td:first-child {
+  color: var(--text);
+}
+
+.map-chart-canvas {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: #050a10;
+}
+
+.map-chart-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-chart-ramp {
+  width: 140px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.map-chart-note {
+  color: var(--text-faint);
+  margin-left: var(--space-3);
+}

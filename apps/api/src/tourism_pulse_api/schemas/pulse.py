@@ -83,6 +83,11 @@ class PulseRead(BaseModel):
     pulse: float
     dimensions: PulseDimensionsRead
     confidence: PulseConfidenceRead
+    # Tourism-pressure score (0-100, higher = more strain): the mean
+    # European percentile of the place's official regional indicators
+    # (see /places/{id}/observatory). Reported beside the Pulse, never
+    # blended into it. None when the place has no regional data.
+    pressure: float | None = None
     trend: PulseTrendRead
     interpretation: PulseInterpretationRead
     # Both optional: only computed on the persist=true path (the "real"

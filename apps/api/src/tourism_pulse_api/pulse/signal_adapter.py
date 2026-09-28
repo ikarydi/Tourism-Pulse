@@ -46,9 +46,9 @@ DIMENSION_MAP: dict[str, str] = {
     # first signal to feed the `economic` dimension.
     "tourism_turnover_growth": "economic",
     # Derived: tourism_nights ÷ population (see ingestion.eurostat.service).
-    # A second, independent capacity-style signal alongside
-    # accommodation_capacity/accommodation_capacity_annual.
-    "visitor_pressure": "capacity",
+    # Feeds the separate tourism-pressure index, not the Pulse composite -
+    # see pulse.engine.PRESSURE_DIMENSION.
+    "visitor_pressure": "pressure",
     # Per-category GDELT article counts (classification.item_classifier
     # tagging each article's title) - see ingestion.gdelt.service.
     "news_event_mentions": "events",

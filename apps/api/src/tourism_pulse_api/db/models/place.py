@@ -21,9 +21,12 @@ class Place(Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    # "country" | "destination" (hand-curated, live signals and Pulse) |
+    # "region" (NUTS 2) | "area" (NUTS 3) | "city" (Eurostat Urban Audit).
     place_type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
+        index=True,
     )
 
     # Nullable and populated opportunistically - unlike weather/OSM
@@ -40,6 +43,43 @@ class Place(Base):
     longitude: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
+    )
+
+    # Eurostat NUTS code of the place's statistical region: NUTS 2 for
+    # destinations (assigned by point-in-polygon, see ingestion.nuts), the
+    # national NUTS 0 code for countries. Not a foreign key - national
+    # codes have no boundary row, and indicators are published for codes
+    # whether or not a boundary is loaded.
+    nuts_code: Mapped[str | None] = mapped_column(
+        String(9),
+        nullable=True,
+    )
+
+    # The NUTS 3 region containing a destination (None for countries).
+    # The observatory prefers it wherever Eurostat publishes an indicator
+    # at that finer level, falling back to nuts_code otherwise.
+    nuts3_code: Mapped[str | None] = mapped_column(
+        String(9),
+        nullable=True,
+    )
+
+    # Stable identity for places generated from official geography
+    # (ingestion.eu_locations): "NUTS2:HU11", "NUTS3:HU110",
+    # "URAU:HU001C". None for hand-curated places.
+    source_code: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
+    # Eurostat Urban Audit city code, linking the place to Eurostat's city
+    # tourism statistics (urb_ctour). Set on generated city places and on
+    # curated destinations matched to an Urban Audit city.
+    urau_code: Mapped[str | None] = mapped_column(
+        String(16),
+        nullable=True,
+        index=True,
     )
 
     destination: Mapped["Destination"] = relationship(

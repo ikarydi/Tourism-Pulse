@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getPlaceHistory, getPlacePulseSummary } from '../api/pulse'
 import { DIMENSIONS } from '../lib/dimensions'
 import { scoreStatus } from '../lib/format'
@@ -18,57 +18,55 @@ type Row = {
 
 const EXCERPT_LENGTH = 120
 
+async function loadRow(place: Place): Promise<Row> {
+  try {
+    // Summary pulse (persist=false) is cheap and skips evidence/narrative
+    // generation; the narrative excerpt comes instead from the most recent
+    // already-persisted snapshot, if any - no extra LLM calls are triggered
+    // just by browsing the overview table.
+    const [pulse, history] = await Promise.all([
+      getPlacePulseSummary(place.id),
+      getPlaceHistory(place.id, 1).catch(() => []),
+    ])
+    const narrative = history[0]?.narrative ?? null
+    return {
+      place,
+      pulse,
+      narrativeExcerpt: narrative
+        ? narrative.length > EXCERPT_LENGTH
+          ? `${narrative.slice(0, EXCERPT_LENGTH)}…`
+          : narrative
+        : null,
+      error: false,
+    }
+  } catch {
+    return { place, pulse: null, narrativeExcerpt: null, error: true }
+  }
+}
+
 export function OverviewPage({ places, onSelectPlace }: { places: Place[]; onSelectPlace: (placeId: number) => void }) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(places.length > 0)
+  const [loaded, setLoaded] = useState<Row[]>([])
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('pulse')
 
+  // Rows appear as each Pulse arrives instead of after the slowest one.
   useEffect(() => {
-    if (!places.length) return
     let cancelled = false
-
-    async function loadRows() {
-      setLoading(true)
-      const results = await Promise.all(
-        places.map(async (place): Promise<Row> => {
-          try {
-            // Summary pulse (persist=false) is cheap and skips
-            // evidence/narrative generation; the narrative excerpt comes
-            // instead from the most recent already-persisted snapshot, if
-            // any - no extra LLM calls are triggered just by browsing
-            // the overview table.
-            const [pulse, history] = await Promise.all([
-              getPlacePulseSummary(place.id),
-              getPlaceHistory(place.id, 1).catch(() => []),
-            ])
-            const narrative = history[0]?.narrative ?? null
-            return {
-              place,
-              pulse,
-              narrativeExcerpt: narrative
-                ? narrative.length > EXCERPT_LENGTH
-                  ? `${narrative.slice(0, EXCERPT_LENGTH)}…`
-                  : narrative
-                : null,
-              error: false,
-            }
-          } catch {
-            return { place, pulse: null, narrativeExcerpt: null, error: true }
-          }
-        }),
-      )
-      if (!cancelled) {
-        setRows(results)
-        setLoading(false)
-      }
+    for (const place of places) {
+      void loadRow(place).then((row) => {
+        if (!cancelled) setLoaded((current) => [...current.filter((item) => item.place.id !== place.id), row])
+      })
     }
-
-    void loadRows()
     return () => {
       cancelled = true
     }
   }, [places])
+
+  const rows = useMemo(() => {
+    const ids = new Set(places.map((place) => place.id))
+    return loaded.filter((row) => ids.has(row.place.id))
+  }, [loaded, places])
+  const pending = places.length - rows.length
 
   const cityCount = rows.filter((row) => row.place.place_type !== 'country').length
   const countryCount = rows.filter((row) => row.place.place_type === 'country').length
@@ -85,7 +83,7 @@ export function OverviewPage({ places, onSelectPlace }: { places: Place[]; onSel
     return valueOf(b) - valueOf(a)
   })
 
-  if (loading) {
+  if (!rows.length && pending > 0) {
     return (
       <div className="state-panel loading-panel">
         <span className="spinner" />
@@ -121,6 +119,11 @@ export function OverviewPage({ places, onSelectPlace }: { places: Place[]; onSel
             National ({countryCount})
           </button>
         </div>
+        {pending > 0 && (
+          <span className="overview-progress">
+            <span className="spinner" /> Loading {pending} more...
+          </span>
+        )}
         <div className="overview-sort">
           <label htmlFor="overview-sort-select">Sort by</label>
           <select id="overview-sort-select" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>

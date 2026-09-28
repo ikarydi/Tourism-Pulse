@@ -21,6 +21,7 @@ import logging
 
 from groq import Groq, GroqError
 
+from tourism_pulse_api.observatory.pressure import PressureReading
 from tourism_pulse_api.pulse.calculator import PulseResult
 from tourism_pulse_api.pulse.insights import DimensionEvidence
 from tourism_pulse_api.settings import settings
@@ -33,10 +34,15 @@ _TEMPERATURE = 0.4
 _SYSTEM_PROMPT = (
     "You are a tourism-intelligence analyst writing a short briefing for "
     "a destination management professional. You are given a place's "
-    "current Pulse score (0-100, higher is better) broken into six "
-    "dimensions - demand, capacity, events, environment, risk, economic - "
-    "plus the actual evidence behind each dimension: real signal "
-    "readings, real news articles, real videos, real events. Write one "
+    "current Pulse score (0-100, overall tourism activity and conditions) "
+    "broken into six dimensions - demand, capacity, events, environment, "
+    "risk, economic - plus the actual evidence behind each dimension: "
+    "real signal readings, real news articles, real videos, real events. "
+    "If a PRESSURE section is present, it is a separate tourism-pressure "
+    "index (0-100, higher means more strain on residents and "
+    "infrastructure): never describe high pressure as a strength, and "
+    "note that strong demand and high pressure can be true at once. "
+    "Write one "
     "concise analyst-style paragraph (150-250 words) explaining what is "
     "happening and why, citing the SPECIFIC evidence you were given - "
     "name actual signal values and sources, actual article headlines, "
@@ -75,12 +81,28 @@ def _format_evidence(evidence: dict[str, DimensionEvidence]) -> str:
     return "\n".join(lines)
 
 
+def _format_pressure(pressure: PressureReading) -> str:
+    lines = [
+        f"\nPRESSURE = {pressure.score:.1f}/100 ({pressure.level}), "
+        f"{pressure.region_name or pressure.nuts_code} ({pressure.level_name})"
+    ]
+    for reading in pressure.indicators:
+        region = reading.region_name or reading.region_code
+        lines.append(
+            f"  - {reading.label}: {reading.value:,.3f} {reading.unit} in {reading.year} "
+            f"({region}, {reading.level_name}), rank {reading.rank} of {reading.peers} "
+            f"({reading.percentile:.0f}th percentile, source: {reading.source})"
+        )
+    return "\n".join(lines)
+
+
 def generate_narrative(
     *,
     place_name: str,
     pulse: PulseResult,
     evidence: dict[str, DimensionEvidence],
     headline: str,
+    pressure: PressureReading | None = None,
 ) -> str | None:
     if not settings.groq_api_key:
         return None
@@ -91,6 +113,8 @@ def generate_narrative(
         f"Headline: {headline}\n"
         f"Evidence by dimension:\n{_format_evidence(evidence)}"
     )
+    if pressure is not None and pressure.score is not None:
+        user_prompt += _format_pressure(pressure)
 
     try:
         client = Groq(api_key=settings.groq_api_key)

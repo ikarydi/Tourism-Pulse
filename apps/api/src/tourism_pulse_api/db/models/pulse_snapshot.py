@@ -60,6 +60,14 @@ class PulseSnapshot(Base):
         server_default="0",
     )
 
+    # Tourism-pressure score from the observatory (observatory.pressure),
+    # reported beside the Pulse. Nullable: a place without regional data
+    # has no reading, and older snapshots predate it.
+    pressure: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
     confidence_score: Mapped[float] = mapped_column(
         Float,
         nullable=False,

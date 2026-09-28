@@ -1,13 +1,14 @@
 from datetime import UTC, datetime, timedelta
-from functools import partial
+from functools import cache, partial
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Event, Place, PulseSnapshot, Signal
 from tourism_pulse_api.db.session import get_db
+from tourism_pulse_api.observatory.pressure import pressure_for_place
 from tourism_pulse_api.pulse.anomaly import detect_anomaly
-from tourism_pulse_api.pulse.engine import PulseEngine
+from tourism_pulse_api.pulse.engine import PRESSURE_DIMENSION, PulseEngine
 from tourism_pulse_api.pulse.event_adapter import event_to_signal
 from tourism_pulse_api.pulse.insights import build_all_dimension_evidence
 from tourism_pulse_api.pulse.interpretation import interpret_pulse
@@ -79,14 +80,19 @@ def calculate_place_pulse(
 
     now = datetime.now(UTC)
 
-    seasonal_signals_by_type: dict[str, list[Signal]] = {}
+    # Grouped by (type, calendar month): a seasonal value is only ever
+    # compared with the same month in earlier years, and decades of monthly
+    # history make an all-months scan per value quadratic.
+    seasonal_signals_by_type: dict[tuple[str, int], list[Signal]] = {}
     other_signals = []
 
     for signal in signals:
         signal_type = signal.signal_type.strip().lower()
 
         if signal_type in SEASONAL_SIGNAL_TYPES:
-            seasonal_signals_by_type.setdefault(signal_type, []).append(signal)
+            seasonal_signals_by_type.setdefault(
+                (signal_type, signal.observed_at.month), []
+            ).append(signal)
         elif signal_type in SIGNAL_NORMALIZERS:
             other_signals.append(signal)
         # Anything else is a raw-only/archival signal type (e.g. the raw
@@ -104,7 +110,7 @@ def calculate_place_pulse(
     processed_seasonal_signals = [
         process_seasonal_signal(
             signal,
-            history=seasonal_signals_by_type[signal.signal_type.strip().lower()],
+            history=signals_of_type,
             now=now,
         )
         for signals_of_type in seasonal_signals_by_type.values()
@@ -128,7 +134,9 @@ def calculate_place_pulse(
         if event_signal is not None
     )
 
-    if not processed_signals:
+    # Pressure signals are raw evidence beside the Pulse, never part of it,
+    # so on their own they cannot produce a Pulse.
+    if not any(signal.dimension != PRESSURE_DIMENSION for signal in processed_signals):
         raise HTTPException(
             status_code=422,
             detail="No signals or events available for this place",
@@ -150,7 +158,8 @@ def calculate_place_pulse(
     )
 
     engine = PulseEngine(
-        reliability_lookup=partial(get_registry_source_reliability, db),
+        # One registry query per source, not per signal.
+        reliability_lookup=cache(partial(get_registry_source_reliability, db)),
     )
     result = engine.calculate(
         signals=processed_signals,
@@ -161,6 +170,11 @@ def calculate_place_pulse(
         pulse=result.pulse,
         confidence=result.confidence,
     )
+
+    # Tourism pressure comes from the observatory's official regional
+    # indicators, reported beside the Pulse and never blended into it.
+    pressure_reading = pressure_for_place(db, place)
+    pressure = pressure_reading.score if pressure_reading is not None else None
 
     # Evidence (pulse.insights) - which signals/articles/videos/events
     # actually explain each dimension - is only computed on the real
@@ -203,6 +217,7 @@ def calculate_place_pulse(
                 pulse=result.pulse,
                 evidence=evidence,
                 headline=str(interpretation["headline"]),
+                pressure=pressure_reading,
             )
 
     # Bulk/overview callers (e.g. a multi-destination comparison view) pass
@@ -220,6 +235,7 @@ def calculate_place_pulse(
             environment=result.pulse.environment,
             risk=result.pulse.risk,
             economic=result.pulse.economic,
+            pressure=pressure,
             confidence_score=result.confidence.score,
             confidence_coverage=result.confidence.coverage,
             narrative=narrative,
@@ -243,6 +259,7 @@ def calculate_place_pulse(
             score=result.confidence.score,
             coverage=result.confidence.coverage,
         ),
+        pressure=pressure,
         trend=PulseTrendRead(
             change=result.trend.change,
             direction=result.trend.direction,

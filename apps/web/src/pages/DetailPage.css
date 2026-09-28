@@ -10,10 +10,20 @@
   margin-bottom: var(--space-5);
 }
 
+.detail-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 900px) {
   .detail-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
 .section-block {

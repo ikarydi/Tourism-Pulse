@@ -25,6 +25,16 @@ class SignalInput:
     source: str
 
 
+# Tourism pressure (visitor load on residents and infrastructure) is
+# reported next to the Pulse, never blended into it: for a hotel high
+# demand is good news, for residents high pressure is the problem, so one
+# "higher is better" composite cannot carry both. Signals mapped to this
+# dimension (visitor_pressure) are raw evidence only - the pressure score
+# itself comes from the observatory's official regional indicators
+# (observatory.pressure).
+PRESSURE_DIMENSION = "pressure"
+
+
 @dataclass(frozen=True)
 class EngineResult:
     pulse: PulseResult
@@ -52,8 +62,12 @@ class PulseEngine:
         signals: list[SignalInput],
         previous_pulse: float | None = None,
     ) -> EngineResult:
+        signals = [
+            signal for signal in signals if signal.dimension != PRESSURE_DIMENSION
+        ]
+
         if not signals:
-            raise ValueError("At least one signal is required")
+            raise ValueError("At least one Pulse signal is required")
 
         dimension_values: dict[str, list[float]] = {
             "demand": [],
@@ -64,7 +78,15 @@ class PulseEngine:
             "economic": [],
         }
 
-        dimension_reliabilities: dict[str, list[float]] = {
+        # Each signal's weight within its dimension is freshness *
+        # reliability, so a dimension is the weighted *mean* of its
+        # normalized values: sum(value * weight) / sum(weight). Dividing
+        # by the weights (not just the reliabilities) is what keeps
+        # staleness from dragging the reading itself toward zero - an old
+        # KSH month still says what it said; it just counts for less
+        # against fresher signals, and lowers confidence via
+        # average_freshness below.
+        dimension_weights: dict[str, list[float]] = {
             "demand": [],
             "capacity": [],
             "events": [],
@@ -95,7 +117,7 @@ class PulseEngine:
             )
 
             dimension_values[signal.dimension].append(effective)
-            dimension_reliabilities[signal.dimension].append(reliability)
+            dimension_weights[signal.dimension].append(freshness * reliability)
             reliabilities.append(reliability)
             freshness_values.append(freshness)
 
@@ -106,13 +128,11 @@ class PulseEngine:
                 dimensions[name] = 0.0
                 continue
 
-            reliability_total = sum(
-                dimension_reliabilities[name]
-            )
+            weight_total = sum(dimension_weights[name])
 
             dimensions[name] = (
-                sum(values) / reliability_total
-                if reliability_total
+                sum(values) / weight_total
+                if weight_total
                 else 0.0
             )
 
@@ -146,9 +166,11 @@ class PulseEngine:
         )
 
         if previous_pulse is None:
+            # Spec 6.9: no history is "insufficient data", never "stable" -
+            # the same term pulse.trend_analysis already uses.
             trend = TrendResult(
                 change=0.0,
-                direction="stable",
+                direction="insufficient_data",
             )
         else:
             trend = calculate_trend(

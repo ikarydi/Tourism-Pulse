@@ -106,6 +106,11 @@ def pytest_configure(config) -> None:
     from tourism_pulse_api.db.session import SessionLocal, engine
     from tourism_pulse_api.main import app  # noqa: F401
 
+    # nuts_regions has a PostGIS geometry column; create_all needs the
+    # extension (the dev DB gets it from a migration, which never runs here).
+    with engine.begin() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
@@ -143,6 +148,7 @@ def _seed_sources(session_factory) -> None:
         {"name": "opensky", "category": "social", "reliability": "0.650"},
         {"name": "wikipedia", "category": "social", "reliability": "0.750"},
         {"name": "gdacs", "category": "official", "reliability": "0.900"},
+        {"name": "gisco", "category": "official", "reliability": "1.000"},
         {
             "name": "openaq",
             "category": "official",

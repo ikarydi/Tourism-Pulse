@@ -25,10 +25,11 @@ export function EconomicCard({
           <strong>
             {turnoverSignal.value >= 0 ? '+' : ''}
             {turnoverSignal.value.toFixed(1)}
-            {turnoverSignal.unit ?? '%'}
+            {!turnoverSignal.unit || turnoverSignal.unit.startsWith('percent') ? '%' : ` ${turnoverSignal.unit}`}
           </strong>
           <span>
-            turnover growth · {turnoverSignal.source} · {formatDate(turnoverSignal.observed_at)}
+            {turnoverSignal.unit === 'percent_yoy' ? 'turnover growth, year on year' : 'turnover growth'} ·{' '}
+            {turnoverSignal.source} · {formatDate(turnoverSignal.observed_at)}
           </span>
         </div>
       )}

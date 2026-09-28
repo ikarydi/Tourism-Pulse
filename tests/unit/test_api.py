@@ -223,7 +223,7 @@ def test_calculate_place_pulse() -> None:
     assert 0.0 <= pulse["confidence"]["score"] <= 100.0
     assert 0.0 <= pulse["confidence"]["coverage"] <= 100.0
 
-    assert pulse["trend"]["direction"] == "stable"
+    assert pulse["trend"]["direction"] == "insufficient_data"
     assert pulse["trend"]["change"] == 0.0
 
 
@@ -648,7 +648,7 @@ def test_pulse_trend_uses_previous_snapshot() -> None:
     )
 
     assert first_pulse.status_code == 200
-    assert first_pulse.json()["trend"]["direction"] == "stable"
+    assert first_pulse.json()["trend"]["direction"] == "insufficient_data"
     assert first_pulse.json()["trend"]["change"] == 0.0
 
     second_signal = client.post(
@@ -674,3 +674,57 @@ def test_pulse_trend_uses_previous_snapshot() -> None:
 
     assert trend["direction"] == "up"
     assert trend["change"] > 0
+
+
+def test_visitor_pressure_signal_stays_out_of_the_pulse() -> None:
+    destination_id = client.post(
+        "/destinations",
+        json={"country_code": "HU", "name": "Test Pressure Destination"},
+    ).json()["id"]
+    place_id = client.post(
+        f"/destinations/{destination_id}/places",
+        json={"name": "Test Pressure Place", "place_type": "destination"},
+    ).json()["id"]
+    observed_at = datetime.now(UTC).isoformat()
+
+    for signal in (
+        {"signal_type": "occupancy", "value": 70, "unit": "percent"},
+        {"signal_type": "visitor_pressure", "value": 2.5, "unit": "nights_per_resident"},
+    ):
+        response = client.post(
+            f"/places/{place_id}/signals",
+            json={**signal, "observed_at": observed_at, "source": "government"},
+        )
+        assert response.status_code == 201
+
+    pulse = client.get(f"/places/{place_id}/pulse").json()
+
+    # Capacity has no signal of its own here, so it stays unfed, and with
+    # no NUTS region there is no observatory pressure score either.
+    assert pulse["dimensions"]["capacity"] == 0.0
+    assert pulse["pressure"] is None
+    assert "pressure" not in pulse["evidence"]
+
+
+def test_pressure_signal_alone_does_not_produce_a_pulse() -> None:
+    destination_id = client.post(
+        "/destinations",
+        json={"country_code": "HU", "name": "Test Pressure Only Destination"},
+    ).json()["id"]
+    place_id = client.post(
+        f"/destinations/{destination_id}/places",
+        json={"name": "Test Pressure Only Place", "place_type": "destination"},
+    ).json()["id"]
+
+    client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "visitor_pressure",
+            "value": 2.5,
+            "unit": "nights_per_resident",
+            "observed_at": datetime.now(UTC).isoformat(),
+            "source": "government",
+        },
+    )
+
+    assert client.get(f"/places/{place_id}/pulse").status_code == 422

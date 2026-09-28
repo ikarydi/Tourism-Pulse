@@ -14,6 +14,7 @@ class PulseSnapshotRead(BaseModel):
     environment: float
     risk: float
     economic: float
+    pressure: float | None = None
     confidence_score: float
     confidence_coverage: float
     narrative: str | None = None

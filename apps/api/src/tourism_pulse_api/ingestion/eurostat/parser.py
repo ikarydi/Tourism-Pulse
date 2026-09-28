@@ -97,6 +97,19 @@ ECONOMIC_DATASET = "sts_setu_a"
 ECONOMIC_UNIT = "percent_yoy"
 ECONOMIC_BASE_URL = f"{EUROSTAT_API_BASE}/{ECONOMIC_DATASET}"
 
+# Eurostat's own geo codes disagree with ISO 3166-1 alpha-2 for a couple
+# of countries. Anything that builds a Eurostat geo code from
+# Destination.country_code must go through eurostat_geo_code, or it
+# silently gets zero rows back for these.
+_ISO_TO_EUROSTAT_GEO = {"GR": "EL", "GB": "UK"}
+
+
+def eurostat_geo_code(iso_country_code: str) -> str:
+    """Eurostat's (and NUTS 0's) code for an ISO 3166-1 alpha-2 country."""
+    code = iso_country_code.strip().upper()
+    return _ISO_TO_EUROSTAT_GEO.get(code, code)
+
+
 # Fixed query dimensions for nights/arrivals (besides geo/time, which vary):
 # monthly frequency, both residents and non-residents combined, raw count
 # (not an index), and "hotels; holiday and other short-stay accommodation;

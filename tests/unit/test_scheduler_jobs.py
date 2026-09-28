@@ -238,3 +238,60 @@ def test_eurostat_remaps_greece_to_eurostats_own_geo_code(
     assert matching_jobs
     for argv in matching_jobs:
         assert argv[argv.index("--geo") + 1] == "EL"
+
+
+def test_eurostat_regional_runs_once_for_all_regions() -> None:
+    from tourism_pulse_api.scheduler.jobs import (
+        SCHEDULED_ADAPTERS,
+        build_argv_eurostat_regional,
+    )
+
+    assert build_argv_eurostat_regional(None) == [[]]  # type: ignore[arg-type]
+    (adapter,) = [a for a in SCHEDULED_ADAPTERS if a.name == "eurostat_regional"]
+    assert adapter.interval_minutes == 7 * 24 * 60
+
+
+@pytest.fixture()
+def statistics_only_places(db_session, hungary) -> list[Place]:
+    """EU-scale places: a NUTS 2 region, a NUTS 3 area and an Urban Audit
+    city, all with coordinates and one named like a KSH tourism area."""
+    places = [
+        Place(
+            destination_id=hungary.id,
+            name=name,
+            place_type=place_type,
+            latitude=47.5,
+            longitude=19.0,
+        )
+        for name, place_type in (
+            ("Budapest", "area"),
+            ("Közép-Magyarország", "region"),
+            ("Scheduler test city", "city"),
+        )
+    ]
+    db_session.add_all(places)
+    db_session.commit()
+    return places
+
+
+@pytest.mark.parametrize(
+    "build_argv",
+    [
+        build_argv_weather,
+        build_argv_osm,
+        build_argv_openaq,
+        build_argv_opensky,
+        build_argv_gdacs,
+        build_argv_wikipedia,
+        build_argv_youtube,
+        build_argv_gdelt,
+        build_argv_events,
+        build_argv_ksh,
+    ],
+)
+def test_live_adapters_skip_statistics_only_places(
+    db_session, budapest, statistics_only_places, build_argv
+) -> None:
+    ids = {argv[argv.index("--place-id") + 1] for argv in build_argv(db_session)}
+
+    assert not ids & {str(place.id) for place in statistics_only_places}

@@ -1,0 +1,197 @@
+.attention-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.attention-skeleton {
+  height: 320px;
+  margin-bottom: var(--space-5);
+}
+
+.attention-head h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+.attention-highlights {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attention-highlights li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 90ch;
+}
+
+.attention-highlights li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.attention-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.attention-panel.compact .attention-grid {
+  /* min(): one full-width column on phones instead of overflowing the card */
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+}
+
+.attention-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.attention-block .mini-label {
+  margin: 0;
+}
+
+.attention-block .mini-label span {
+  margin-left: 6px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-faint);
+}
+
+.attention-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-3);
+}
+
+.attention-stats strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.attention-stats span {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.attention-panel .up {
+  color: var(--status-good);
+}
+
+.attention-panel .down {
+  color: var(--status-bad);
+}
+
+.attention-panel .flat {
+  color: var(--text-muted);
+}
+
+.attention-panel .hot {
+  color: var(--status-warn);
+  font-weight: 600;
+}
+
+.share-bars,
+.topic-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.share-bars li,
+.topic-rows li {
+  display: grid;
+  grid-template-columns: minmax(90px, 150px) minmax(0, 1fr) 42px 56px;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.share-label {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(163, 196, 224, 0.08);
+}
+
+.share-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: rgba(95, 211, 232, 0.7);
+}
+
+.share-fill.topic {
+  background: rgba(232, 194, 106, 0.65);
+}
+
+.europe-mark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  margin-left: -1px;
+  background: var(--text);
+  opacity: 0.8;
+}
+
+.share-value {
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.share-shift {
+  text-align: right;
+  font-size: 11px;
+}
+
+.attention-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+@media (max-width: 900px) {
+  .attention-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .share-bars li,
+  .topic-rows li {
+    grid-template-columns: 80px minmax(0, 1fr) 38px 46px;
+  }
+}
