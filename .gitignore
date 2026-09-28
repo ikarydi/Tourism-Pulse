@@ -50,3 +50,6 @@ research/nowcast/data/*_cache/
 
 # GDELT daily summaries (python -m tourism_pulse_api.ingestion.gdelt_gkg)
 data/gdelt_gkg_cache/
+
+# Wikipedia pageviews per article (python -m tourism_pulse_api.ingestion.wikipedia_monthly)
+data/wikipedia_monthly_cache/

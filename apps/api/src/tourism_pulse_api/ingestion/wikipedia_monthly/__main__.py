@@ -2,16 +2,24 @@
 
 python -m tourism_pulse_api.ingestion.wikipedia_monthly
 python -m tourism_pulse_api.ingestion.wikipedia_monthly --dry-run
+python -m tourism_pulse_api.ingestion.wikipedia_monthly --cache-dir PATH
 
 The total (`wikipedia_views_monthly`) is the English and German articles
 (Hungarian too for KSH tourism areas), as used since the nowcast research.
 Views per language edition - the market languages in articles.py plus the
 place's own - go to signal_breakdowns under the same signal type, as a read
 on which source markets are looking.
+
+About 2,000 articles are fetched per run. Each answer is cached on disk for the
+run month, so an interrupted run resumes where it stopped and the weekly
+scheduled runs only fetch again once a new month has closed.
 """
 
 import argparse
+import hashlib
+import itertools
 import json
+import shutil
 import sys
 import time
 import urllib.error
@@ -20,6 +28,7 @@ import urllib.request
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 from sqlalchemy.dialects.postgresql import insert
 
@@ -42,6 +51,7 @@ PAGEVIEWS_URL = (
     "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
     "{language}.wikipedia/all-access/user/{title}/monthly/2015070100/{end}"
 )
+DEFAULT_CACHE_DIR = Path("data/wikipedia_monthly_cache")
 
 
 def _monthly_views(article: Article, end: str) -> dict[str, int]:
@@ -61,9 +71,41 @@ def _monthly_views(article: Article, end: str) -> dict[str, int]:
                 return {}
             if exc.code != 429 or attempt == 7:
                 raise
-            # Throttled: back off for up to two minutes before retrying.
-            time.sleep(min(120, 5 * 2**attempt))
+            # Throttled: wait as long as the server asks, else back off for
+            # up to two minutes.
+            retry_after = exc.headers.get("Retry-After", "")
+            wait = int(retry_after) if retry_after.isdigit() else 5 * 2**attempt
+            time.sleep(min(120, wait))
     return {}
+
+
+def _cache_path(cache_dir: Path, article: Article, end: str) -> Path:
+    key = hashlib.sha1(f"{article.language}:{article.title}".encode()).hexdigest()[:20]
+    return cache_dir / end[:6] / f"{article.language}_{key}.json"
+
+
+def _prune_cache(cache_dir: Path, end: str) -> None:
+    """Drop earlier run months: their answers stop a month short."""
+    if cache_dir.is_dir():
+        for folder in cache_dir.iterdir():
+            if folder.is_dir() and folder.name != end[:6]:
+                shutil.rmtree(folder)
+
+
+def _cached_views(article: Article, end: str, cache_dir: Path) -> tuple[dict[str, int], bool]:
+    """Views for `article`, from this run month's cache when present.
+    Returns (views, fetched): fetched is False on a cache hit."""
+    path = _cache_path(cache_dir, article, end)
+    if path.exists():
+        return json.loads(path.read_text())["views"], False
+    views = _monthly_views(article, end)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps({"language": article.language, "title": article.title, "views": views})
+    )
+    temporary.replace(path)
+    return views, True
 
 
 def _country_code(place: Place) -> str | None:
@@ -138,6 +180,7 @@ def _summed(
 def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m tourism_pulse_api.ingestion.wikipedia_monthly")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     args = parser.parse_args(argv)
 
     today = date.today()
@@ -168,9 +211,18 @@ def run(argv: list[str] | None = None) -> int:
             {a for items in [*totals.values(), *editions.values()] for a in items}, key=str
         )
 
+        _prune_cache(args.cache_dir, end)
+        print(f"{len(unique)} articles for {len(totals)} places", flush=True)
+        progress = itertools.count(1)  # next() is atomic across threads
+
         def fetch(article: Article) -> tuple[Article, dict[str, int]]:
-            time.sleep(0.5)  # about four requests a second in all: polite to Wikimedia
-            return article, _monthly_views(article, end)
+            views, from_network = _cached_views(article, end, args.cache_dir)
+            if from_network:
+                time.sleep(0.5)  # about four requests a second in all: polite to Wikimedia
+            done = next(progress)
+            if done % 200 == 0 or done == len(unique):
+                print(f"    {done}/{len(unique)} articles", flush=True)
+            return article, views
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             fetched: dict[Article, dict[str, int]] = dict(pool.map(fetch, unique))

@@ -35,7 +35,12 @@ from tourism_pulse_api.ingestion.eurostat_regional.parser import IndicatorValue
 from tourism_pulse_api.ingestion.eurostat_regional.service import upsert_indicators
 from tourism_pulse_api.ingestion.nuts.parser import parse_nuts_geojson
 from tourism_pulse_api.ingestion.nuts.service import upsert_regions
-from tourism_pulse_api.ingestion.wikipedia_monthly.__main__ import _articles_for, _summed
+from tourism_pulse_api.ingestion.wikipedia_monthly.__main__ import (
+    _articles_for,
+    _cached_views,
+    _prune_cache,
+    _summed,
+)
 from tourism_pulse_api.ingestion.wikipedia_monthly.articles import Article
 from tourism_pulse_api.main import app
 from tourism_pulse_api.observatory.pressure import Ranker, pressure_for_codes
@@ -363,6 +368,27 @@ def test_wikipedia_breakdown_sums_a_language_only_when_every_article_reports() -
     }
 
     assert _summed(articles, fetched, current_month="202601") == {"202501": 140}
+
+
+def test_wikipedia_views_are_cached_per_run_month(tmp_path) -> None:
+    article = Article("fr", "Pécs")
+    with patch(
+        "tourism_pulse_api.ingestion.wikipedia_monthly.__main__._monthly_views",
+        return_value={"202507": 900},
+    ) as fetch:
+        first = _cached_views(article, "2026090100", tmp_path)
+        again = _cached_views(article, "2026090100", tmp_path)
+        next_month = _cached_views(article, "2026100100", tmp_path)
+
+    # A rerun in the same month reads the disk; a new month fetches again.
+    assert first == ({"202507": 900}, True)
+    assert again == ({"202507": 900}, False)
+    assert next_month == ({"202507": 900}, True)
+    assert fetch.call_count == 2
+
+    # A new month's run clears the earlier months.
+    _prune_cache(tmp_path, "2026100100")
+    assert [folder.name for folder in tmp_path.iterdir()] == ["202610"]
 
 
 def test_bulk_ranker_matches_the_per_place_path() -> None:

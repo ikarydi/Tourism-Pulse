@@ -7,7 +7,10 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
-USER_AGENT = "tourism-pulse-ingestion/1.0"
+# Wikimedia's User-Agent policy asks for a client name and contact details.
+# Clients without them are throttled far harder: a full load took hours
+# instead of about 20 minutes.
+USER_AGENT = "TourismPulse/1.0 (https://github.com/ikarydi/Tourism-Pulse)"
 
 # Curated destination names whose plain title is ambiguous or means
 # something else (the destination "Luxembourg" is the city, not the country).
