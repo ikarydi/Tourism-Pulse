@@ -5,8 +5,9 @@ the place's own (its airports). The survey, prices, turnover and origin
 markets are national figures, taken from the country the place is in, and
 labelled as such.
 
-None of this feeds the Pulse or the pressure score. Whether flights and the
-survey improve the outlook is Gate 3's question (research/gate3/).
+None of this feeds the Pulse, the pressure score or the outlook. Gate 3
+(research/gate3/results/VERDICT.md) found that neither flights nor the
+survey improves forecasts 1-3 months ahead, so they are context only.
 """
 
 import calendar
