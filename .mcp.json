@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "db": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=restricted"],
+      "env": {
+        "DATABASE_URI": "postgresql://tourism_pulse:tourism_pulse_dev@localhost:5432/tourism_pulse"
+      }
+    }
+  }
+}
