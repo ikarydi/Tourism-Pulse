@@ -24,11 +24,13 @@ spend API quotas on places that have no Pulse.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.forecasting.__main__ import run as run_forecasting
+from tourism_pulse_api.ingestion.bluesky.__main__ import run as run_bluesky
 from tourism_pulse_api.ingestion.ec_survey.__main__ import run as run_ec_survey
 from tourism_pulse_api.ingestion.eurocontrol.__main__ import run as run_eurocontrol
 from tourism_pulse_api.ingestion.eurostat.__main__ import run as run_eurostat
@@ -45,10 +47,13 @@ from tourism_pulse_api.ingestion.ksh_capacity.__main__ import run as run_ksh_cap
 from tourism_pulse_api.ingestion.openaq.__main__ import run as run_openaq
 from tourism_pulse_api.ingestion.opensky.__main__ import run as run_opensky
 from tourism_pulse_api.ingestion.osm.__main__ import run as run_osm
+from tourism_pulse_api.ingestion.reddit.__main__ import run as run_reddit
 from tourism_pulse_api.ingestion.weather.__main__ import run as run_weather
 from tourism_pulse_api.ingestion.wikipedia.__main__ import run as run_wikipedia
 from tourism_pulse_api.ingestion.wikipedia_monthly.__main__ import run as run_wikipedia_monthly
 from tourism_pulse_api.ingestion.youtube.__main__ import run as run_youtube
+from tourism_pulse_api.ingestion.youtube_monthly.__main__ import run as run_youtube_monthly
+from tourism_pulse_api.settings import settings
 
 RunFn = Callable[[list[str] | None], int]
 ArgvBuilder = Callable[[Session], list[list[str]]]
@@ -163,6 +168,31 @@ def build_argv_youtube(db: Session) -> list[list[str]]:
         ["--place-id", str(place.id), "--query", f"{place.name} travel guide"]
         for place in _curated_places(db)
     ]
+
+
+def _months_ago(today: date, count: int) -> str:
+    index = today.year * 12 + today.month - 1 - count
+    return f"{index // 12:04d}-{index % 12 + 1:02d}"
+
+
+# Social media (research/gate4). Each runs only when its credentials are
+# set; none is needed for the rest of the scheduler.
+def build_argv_youtube_monthly(db: Session) -> list[list[str]]:
+    if not settings.youtube_api_key:
+        return []
+    return [["--start", _months_ago(date.today(), 24)]]
+
+
+def build_argv_reddit(db: Session) -> list[list[str]]:
+    if not (settings.reddit_client_id and settings.reddit_client_secret):
+        return []
+    return [[]]
+
+
+def build_argv_bluesky(db: Session) -> list[list[str]]:
+    if not (settings.bluesky_handle and settings.bluesky_app_password):
+        return []
+    return [["--months", "2"]]
 
 
 def build_argv_gdelt(db: Session) -> list[list[str]]:
@@ -318,6 +348,19 @@ SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
     ),
     ScheduledAdapter(
         "ec_survey", run_ec_survey, build_argv_once, interval_minutes=_ONE_WEEK_MINUTES
+    ),
+    # Social media, monthly series. Weekly runs freeze each YouTube month
+    # within days of it closing (Gate 4's live holdout) and catch Reddit's
+    # short listings before older posts drop out of them.
+    ScheduledAdapter(
+        "youtube_monthly",
+        run_youtube_monthly,
+        build_argv_youtube_monthly,
+        interval_minutes=_ONE_WEEK_MINUTES,
+    ),
+    ScheduledAdapter("reddit", run_reddit, build_argv_reddit, interval_minutes=_ONE_WEEK_MINUTES),
+    ScheduledAdapter(
+        "bluesky", run_bluesky, build_argv_bluesky, interval_minutes=_ONE_WEEK_MINUTES
     ),
     # Issues forecasts once a new official month lands; earlier live
     # forecasts are never overwritten.

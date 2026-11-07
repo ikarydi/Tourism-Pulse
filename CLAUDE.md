@@ -5,6 +5,7 @@ Tourism-pressure observatory and 12-month seasonal outlook for EU destinations (
 ## Phase (update when gates pass)
 - Product focus is the **pressure observatory**. Forecasts ship as a seasonal outlook with intervals.
 - Pre-registered research gates 1, 1b, 2 (skill) and 3 FAILED. Make no alternative-data accuracy claims anywhere: UI, copy, pitches, the paper.
+- Gate 4 (does YouTube upload growth help at 4-12 months?) was pre-registered on 2026-11-07, before any social data was fetched. Its live holdout is scored around Mar 2028. Until then, social signals are context only.
 - Now:
   - put the read-only scoreboard online
   - post the preprint
@@ -17,7 +18,7 @@ Tourism-pressure observatory and 12-month seasonal outlook for EU destinations (
 - API: Python 3.12, FastAPI, SQLAlchemy 2, Alembic (`infrastructure/alembic`), APScheduler, Groq. Lives in `apps/api`.
 - DB: Postgres with PostGIS and pgvector (`infrastructure/postgres`).
 - Web: React + TypeScript + Vite, in `apps/web`.
-- About 20 ingestion adapters: Eurostat, KSH, EC survey, Wikipedia, GDELT, OpenSky, Eurocontrol, weather, and more.
+- About 20 ingestion adapters: Eurostat, KSH, EC survey, Wikipedia, GDELT, OpenSky, Eurocontrol, weather, and more. Social media: YouTube monthly uploads, Reddit and Bluesky (official APIs; monthly aggregates only, no post text or usernames stored).
 
 ## Commands
 ```

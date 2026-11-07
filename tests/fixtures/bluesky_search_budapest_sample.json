@@ -1,0 +1,27 @@
+{
+  "cursor": "100",
+  "hitsTotal": 3,
+  "posts": [
+    {
+      "uri": "at://did:plc:fixturea/app.bsky.feed.post/3k1",
+      "cid": "bafyfixture1",
+      "author": {"did": "did:plc:fixturea", "handle": "a.example.com"},
+      "record": {"$type": "app.bsky.feed.post", "text": "Budapest Christmas market is so crowded tonight", "createdAt": "2026-10-20T18:00:00.000Z", "langs": ["en"]},
+      "indexedAt": "2026-10-20T18:00:01.000Z"
+    },
+    {
+      "uri": "at://did:plc:fixtureb/app.bsky.feed.post/3k2",
+      "cid": "bafyfixture2",
+      "author": {"did": "did:plc:fixtureb", "handle": "b.example.com"},
+      "record": {"$type": "app.bsky.feed.post", "text": "Budapesten a Széchenyi fürdő ma is gyönyörű volt", "createdAt": "2026-10-12T09:00:00.000Z", "langs": ["hu"]},
+      "indexedAt": "2026-10-12T09:00:01.000Z"
+    },
+    {
+      "uri": "at://did:plc:fixturec/app.bsky.feed.post/3k3",
+      "cid": "bafyfixture3",
+      "author": {"did": "did:plc:fixturec", "handle": "c.example.com"},
+      "record": {"$type": "app.bsky.feed.post", "text": "Landed in Budapest!", "createdAt": "2026-10-02T07:00:00.000Z"},
+      "indexedAt": "2026-10-02T07:00:01.000Z"
+    }
+  ]
+}

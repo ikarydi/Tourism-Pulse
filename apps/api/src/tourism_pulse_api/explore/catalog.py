@@ -338,6 +338,49 @@ _SIGNALS: dict[str, tuple[str, str, str, str, str, str]] = {
         "avg",
         "GDELT articles on any topic that mention the place, per million articles.",
     ),
+    "youtube_uploads_monthly": (
+        "YouTube uploads",
+        _ATTENTION,
+        "videos",
+        "month",
+        "sum",
+        'Videos matching "<place> travel" uploaded to YouTube in the month (YouTube\'s '
+        "estimate, taken once soon after the month closes).",
+    ),
+    "reddit_posts_monthly": (
+        "Reddit posts",
+        _ATTENTION,
+        "posts",
+        "month",
+        "sum",
+        "Posts in the place's local subreddits (e.g. r/budapest, r/crete).",
+    ),
+    "reddit_felt_pressure_share": (
+        "Felt pressure (Reddit)",
+        _ATTENTION,
+        "share",
+        "month",
+        "avg",
+        "Share of local subreddit posts that mention crowding, prices or short-term lets "
+        "(fixed lexicon in EN, EL, HU, DE). Context only, not a forecast input.",
+    ),
+    "bluesky_posts_monthly": (
+        "Bluesky posts",
+        _ATTENTION,
+        "posts",
+        "month",
+        "sum",
+        "Bluesky posts naming the place, with a breakdown by post language.",
+    ),
+    "bluesky_felt_pressure_share": (
+        "Felt pressure (Bluesky)",
+        _ATTENTION,
+        "share",
+        "month",
+        "avg",
+        "Share of Bluesky posts naming the place that mention crowding, prices or short-term "
+        "lets (fixed lexicon in EN, EL, HU, DE). Context only, not a forecast input.",
+    ),
     **{
         f"{medium}_{category}_mentions": (
             f"{'News' if medium == 'news' else 'Video'} {category} mentions",
