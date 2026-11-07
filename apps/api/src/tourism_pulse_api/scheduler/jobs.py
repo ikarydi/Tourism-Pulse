@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from tourism_pulse_api.db.models import Place
 from tourism_pulse_api.forecasting.__main__ import run as run_forecasting
+from tourism_pulse_api.forecasting.publish import run as run_forecast_publish
 from tourism_pulse_api.ingestion.ec_survey.__main__ import run as run_ec_survey
 from tourism_pulse_api.ingestion.eurocontrol.__main__ import run as run_eurocontrol
 from tourism_pulse_api.ingestion.eurostat.__main__ import run as run_eurostat
@@ -323,5 +324,12 @@ SCHEDULED_ADAPTERS: list[ScheduledAdapter] = [
     # forecasts are never overwritten.
     ScheduledAdapter(
         "forecasting", run_forecasting, build_argv_once, interval_minutes=_ONE_DAY_MINUTES
+    ),
+    # Publishes live forecasts issued since the last batch to the public
+    # record (FORECAST_PUBLISH_DIR), with an RFC 3161 timestamp. Hourly, so a
+    # batch goes out soon after it is issued; a run with nothing new is a
+    # no-op, and it is skipped when FORECAST_PUBLISH_DIR is unset.
+    ScheduledAdapter(
+        "forecast_publish", run_forecast_publish, build_argv_once, interval_minutes=60
     ),
 ]

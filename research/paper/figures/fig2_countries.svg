@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 692" width="720" height="692" role="img" aria-label="Error ratios by country for each signal">
+<rect width="720" height="692" fill="#ffffff"/>
+<line x1="56.0" x2="56.0" y1="38" y2="644" stroke="#d5dedd"/>
+<text x="56.0" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">0.7</text>
+<line x1="162.7" x2="162.7" y1="38" y2="644" stroke="#d5dedd"/>
+<text x="162.7" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">0.8</text>
+<line x1="269.3" x2="269.3" y1="38" y2="644" stroke="#d5dedd"/>
+<text x="269.3" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">0.9</text>
+<line x1="344.0" x2="344.0" y1="38" y2="644" stroke="#d5dedd" stroke-dasharray="4 3"/>
+<text x="344.0" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">0.97</text>
+<line x1="376.0" x2="376.0" y1="38" y2="644" stroke="#1d2a2e"/>
+<text x="376.0" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">1</text>
+<line x1="482.7" x2="482.7" y1="38" y2="644" stroke="#d5dedd"/>
+<text x="482.7" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">1.1</text>
+<line x1="589.3" x2="589.3" y1="38" y2="644" stroke="#d5dedd"/>
+<text x="589.3" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">1.2</text>
+<line x1="696.0" x2="696.0" y1="38" y2="644" stroke="#d5dedd"/>
+<text x="696.0" y="662" text-anchor="middle" font-size="11" fill="#5b6a6e" style="font-family:Helvetica,Arial,sans-serif">1.3</text>
+<text x="376.0" y="684" text-anchor="middle" font-size="12" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">Error ratio with the signal to without it (below 1 = helps; dashed = 0.97 bar)</text>
+<circle cx="62" cy="18" r="5" fill="#1f6f8b"/>
+<text x="72" y="22" font-size="12" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">Attention (Gate 2)</text>
+<circle cx="272" cy="18" r="5" fill="#c0781a"/>
+<text x="282" y="22" font-size="12" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">Flights (Gate 3)</text>
+<circle cx="482" cy="18" r="5" fill="#9b3d5a"/>
+<text x="492" y="22" font-size="12" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">Hotel survey (Gate 3)</text>
+<text x="46" y="58.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">EL</text>
+<circle cx="108.2" cy="54.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="497.8" cy="54.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="588.3" cy="54.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="78.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">ES</text>
+<circle cx="171.9" cy="74.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="407.4" cy="74.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<text x="46" y="98.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">PT</text>
+<circle cx="196.5" cy="94.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="493.5" cy="94.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="630.8" cy="94.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="118.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">BG</text>
+<circle cx="217.7" cy="114.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="359.0" cy="114.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="444.0" cy="114.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="138.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">LV</text>
+<circle cx="228.5" cy="134.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="389.5" cy="134.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="443.5" cy="134.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="158.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">SE</text>
+<circle cx="231.3" cy="154.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="339.4" cy="154.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="450.3" cy="154.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="178.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">CH</text>
+<circle cx="241.4" cy="174.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="384.7" cy="174.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<text x="46" y="198.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">DK</text>
+<circle cx="269.2" cy="194.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="417.0" cy="194.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="418.1" cy="194.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="218.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">EE</text>
+<circle cx="284.4" cy="214.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="307.9" cy="214.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="399.4" cy="214.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="238.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">DE</text>
+<circle cx="288.0" cy="234.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="386.7" cy="234.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="435.7" cy="234.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="258.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">FR</text>
+<circle cx="290.0" cy="254.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="326.5" cy="254.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="405.8" cy="254.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="278.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">BE</text>
+<circle cx="292.3" cy="274.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="407.5" cy="274.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="434.5" cy="274.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="298.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">HR</text>
+<circle cx="295.8" cy="294.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="384.6" cy="294.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="390.0" cy="294.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="318.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">LT</text>
+<circle cx="305.4" cy="314.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="350.1" cy="314.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="367.4" cy="314.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="338.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">FI</text>
+<circle cx="306.4" cy="334.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="402.3" cy="334.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="438.6" cy="334.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="358.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">LU</text>
+<circle cx="309.9" cy="354.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="372.9" cy="354.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<text x="46" y="378.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">RO</text>
+<circle cx="317.5" cy="374.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="464.5" cy="374.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="390.9" cy="374.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="398.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">CY</text>
+<circle cx="323.1" cy="394.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="355.6" cy="394.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="378.3" cy="394.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="418.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">AT</text>
+<circle cx="324.8" cy="414.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="349.1" cy="414.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="396.7" cy="414.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="438.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">CZ</text>
+<circle cx="328.6" cy="434.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="359.1" cy="434.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="443.7" cy="434.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="458.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">HU</text>
+<circle cx="329.1" cy="454.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="332.3" cy="454.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="380.5" cy="454.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="478.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">NO</text>
+<circle cx="338.1" cy="474.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="344.0" cy="474.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<text x="46" y="498.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">SI</text>
+<circle cx="340.0" cy="494.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="395.9" cy="494.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="390.7" cy="494.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="518.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">IS</text>
+<circle cx="357.3" cy="514.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="354.0" cy="514.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<text x="46" y="538.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">IE</text>
+<circle cx="364.1" cy="534.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="352.8" cy="534.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="375.7" cy="534.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="558.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">NL</text>
+<circle cx="364.8" cy="554.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="361.1" cy="554.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="383.5" cy="554.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="578.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">SK</text>
+<circle cx="444.1" cy="574.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="632.5" cy="574.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="369.8" cy="574.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="598.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">IT</text>
+<circle cx="473.5" cy="594.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="387.1" cy="594.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="349.1" cy="594.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="618.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">MT</text>
+<circle cx="642.7" cy="614.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="242.8" cy="614.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="333.5" cy="614.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+<text x="46" y="638.0" text-anchor="end" font-size="11" fill="#1d2a2e" style="font-family:Helvetica,Arial,sans-serif">PL</text>
+<circle cx="664.0" cy="634.0" r="4.2" fill="#1f6f8b" fill-opacity="0.85"/>
+<circle cx="370.5" cy="634.0" r="4.2" fill="#c0781a" fill-opacity="0.85"/>
+<circle cx="329.7" cy="634.0" r="4.2" fill="#9b3d5a" fill-opacity="0.85"/>
+</svg>

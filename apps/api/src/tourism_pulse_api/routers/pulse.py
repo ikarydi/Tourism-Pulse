@@ -41,6 +41,51 @@ from tourism_pulse_api.schemas.pulse_trend import (
 )
 from tourism_pulse_api.settings import settings
 
+# A reused narrative must describe the scores being shown: it is dropped
+# once the overall Pulse or any dimension has moved this far from the
+# snapshot the text was written for.
+NARRATIVE_MAX_SCORE_DRIFT = 1.0
+_DIMENSIONS = ("pulse", "demand", "capacity", "events", "environment", "risk", "economic")
+
+
+def _reusable_narrative(
+    db: Session,
+    previous: PulseSnapshot | None,
+    current,
+    now: datetime,
+) -> str | None:
+    """The previous narrative, if it is still fresh and still true.
+
+    Every reuse writes a new snapshot, so freshness is measured from the
+    snapshot where the text first appeared, not the latest one (otherwise a
+    place viewed every few hours would keep one text forever). And the
+    scores must not have moved since that text was written: after a data
+    refresh the Pulse can jump, and old text would contradict the numbers
+    next to it."""
+    if previous is None or previous.narrative is None:
+        return None
+    origin = (
+        db.query(PulseSnapshot)
+        .filter(
+            PulseSnapshot.place_id == previous.place_id,
+            PulseSnapshot.narrative == previous.narrative,
+        )
+        .order_by(PulseSnapshot.calculated_at.asc(), PulseSnapshot.id.asc())
+        .first()
+    ) or previous
+    if now - origin.calculated_at >= timedelta(hours=settings.narrative_refresh_hours):
+        return None
+    for dimension in _DIMENSIONS:
+        before, after = getattr(origin, dimension), getattr(current, dimension)
+        if before is None or after is None:
+            if before is not after:
+                return None
+            continue
+        if abs(float(before) - float(after)) > NARRATIVE_MAX_SCORE_DRIFT:
+            return None
+    return previous.narrative
+
+
 router = APIRouter(
     prefix="/places/{place_id}/pulse",
     tags=["pulse"],
@@ -90,9 +135,9 @@ def calculate_place_pulse(
         signal_type = signal.signal_type.strip().lower()
 
         if signal_type in SEASONAL_SIGNAL_TYPES:
-            seasonal_signals_by_type.setdefault(
-                (signal_type, signal.observed_at.month), []
-            ).append(signal)
+            seasonal_signals_by_type.setdefault((signal_type, signal.observed_at.month), []).append(
+                signal
+            )
         elif signal_type in SIGNAL_NORMALIZERS:
             other_signals.append(signal)
         # Anything else is a raw-only/archival signal type (e.g. the raw
@@ -102,10 +147,7 @@ def calculate_place_pulse(
         # fail the whole calculation the way an unconditional process_signal
         # call would.
 
-    processed_signals = [
-        process_signal(signal, now=now)
-        for signal in other_signals
-    ]
+    processed_signals = [process_signal(signal, now=now) for signal in other_signals]
 
     processed_seasonal_signals = [
         process_seasonal_signal(
@@ -123,15 +165,10 @@ def calculate_place_pulse(
         if seasonal_signal is not None
     )
 
-    processed_events = [
-        event_to_signal(event, now=now)
-        for event in events
-    ]
+    processed_events = [event_to_signal(event, now=now) for event in events]
 
     processed_signals.extend(
-        event_signal
-        for event_signal in processed_events
-        if event_signal is not None
+        event_signal for event_signal in processed_events if event_signal is not None
     )
 
     # Pressure signals are raw evidence beside the Pulse, never part of it,
@@ -151,11 +188,7 @@ def calculate_place_pulse(
         .first()
     )
 
-    previous_pulse = (
-        previous_snapshot.pulse
-        if previous_snapshot is not None
-        else None
-    )
+    previous_pulse = previous_snapshot.pulse if previous_snapshot is not None else None
 
     engine = PulseEngine(
         # One registry query per source, not per signal.
@@ -195,22 +228,15 @@ def calculate_place_pulse(
 
     # Narrative (pulse.narrative) - the LLM half of the insight engine,
     # built on top of `evidence` above - is throttled independently of
-    # the evidence computation itself: reuse the previous snapshot's
-    # narrative when it's still within settings.narrative_refresh_hours,
-    # so a real dashboard visit doesn't pay LLM latency/cost on every
-    # single page load, only roughly once per place per refresh window.
+    # the evidence computation itself: a page load reuses the previous
+    # narrative instead of paying LLM latency/cost, but only while it still
+    # describes the scores being shown (see _reusable_narrative).
     narrative: str | None = None
 
     if persist:
-        narrative_is_fresh = (
-            previous_snapshot is not None
-            and previous_snapshot.narrative is not None
-            and (now - previous_snapshot.calculated_at)
-            < timedelta(hours=settings.narrative_refresh_hours)
-        )
-
-        if narrative_is_fresh and previous_snapshot is not None:
-            narrative = previous_snapshot.narrative
+        reusable = _reusable_narrative(db, previous_snapshot, result.pulse, now)
+        if reusable is not None:
+            narrative = reusable
         elif evidence is not None:
             narrative = generate_narrative(
                 place_name=place.name,
@@ -281,6 +307,7 @@ def calculate_place_pulse(
         narrative=narrative,
     )
 
+
 @router.get(
     "/history",
     response_model=list[PulseSnapshotRead],
@@ -314,6 +341,7 @@ def get_place_pulse_history(
         .limit(limit)
         .all()
     )
+
 
 @router.get(
     "/trend",
@@ -355,8 +383,7 @@ def get_place_pulse_trend(
         (
             snapshot
             for snapshot in snapshots[1:]
-            if snapshot.calculated_at
-            <= now - timedelta(hours=24)
+            if snapshot.calculated_at <= now - timedelta(hours=24)
         ),
         None,
     )
@@ -365,8 +392,7 @@ def get_place_pulse_trend(
         (
             snapshot
             for snapshot in snapshots[1:]
-            if snapshot.calculated_at
-            <= now - timedelta(days=7)
+            if snapshot.calculated_at <= now - timedelta(days=7)
         ),
         None,
     )
@@ -389,6 +415,8 @@ def get_place_pulse_trend(
             negative=result.negative_drivers,
         ),
     )
+
+
 @router.get(
     "/anomaly",
     response_model=PulseAnomalyRead,

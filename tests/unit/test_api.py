@@ -2,6 +2,8 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from tourism_pulse_api.db.models import PulseSnapshot
+from tourism_pulse_api.db.session import SessionLocal
 from tourism_pulse_api.main import app
 
 client = TestClient(app)
@@ -43,6 +45,7 @@ def test_create_and_list_destination() -> None:
         and item["name"] == "Test Athens"
         for item in destinations
     )
+
 
 def test_create_and_list_places() -> None:
     destination_response = client.post(
@@ -137,6 +140,8 @@ def test_place_not_found() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Place not found"}
+
+
 def test_calculate_place_pulse() -> None:
     destination_response = client.post(
         "/destinations",
@@ -163,35 +168,35 @@ def test_calculate_place_pulse() -> None:
     place_id = place_response.json()["id"]
 
     signals = [
-    {
-        "signal_type": "occupancy",
-        "value": 80,
-        "unit": "percent",
-        "observed_at": "2026-08-20T10:00:00Z",
-        "source": "government",
-    },
-    {
-        "signal_type": "hotel_occupancy",
-        "value": 70,
-        "unit": "percent",
-        "observed_at": "2026-08-20T10:00:00Z",
-        "source": "official",
-    },
-    {
-        "signal_type": "sentiment",
-        "value": 0.8,
-        "unit": "score",
-        "observed_at": "2026-08-20T10:00:00Z",
-        "source": "commercial",
-    },
-    {
-        "signal_type": "weather_comfort",
-        "value": 85,
-        "unit": "percent",
-        "observed_at": "2026-08-20T10:00:00Z",
-        "source": "government",
-    },
-]
+        {
+            "signal_type": "occupancy",
+            "value": 80,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+        {
+            "signal_type": "hotel_occupancy",
+            "value": 70,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "official",
+        },
+        {
+            "signal_type": "sentiment",
+            "value": 0.8,
+            "unit": "score",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "commercial",
+        },
+        {
+            "signal_type": "weather_comfort",
+            "value": 85,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+    ]
 
     for signal in signals:
         response = client.post(
@@ -280,6 +285,7 @@ def test_event_contributes_to_place_pulse() -> None:
 
     assert pulse["dimensions"]["events"] > 0
     assert pulse["pulse"] > 0
+
 
 def test_pulse_snapshot_is_persisted() -> None:
     destination_response = client.post(
@@ -493,11 +499,17 @@ def test_pulse_evidence_only_computed_on_persist_true() -> None:
     persisted_pulse = persisted_response.json()
     assert persisted_pulse["evidence"] is not None
     assert set(persisted_pulse["evidence"].keys()) == {
-        "demand", "capacity", "events", "environment", "risk", "economic",
+        "demand",
+        "capacity",
+        "events",
+        "environment",
+        "risk",
+        "economic",
     }
-    assert persisted_pulse["evidence"]["demand"]["contributing_signals"][0][
-        "signal_type"
-    ] == "occupancy"
+    assert (
+        persisted_pulse["evidence"]["demand"]["contributing_signals"][0]["signal_type"]
+        == "occupancy"
+    )
 
     bulk_response = client.get(
         f"/places/{place_id}/pulse",
@@ -559,6 +571,95 @@ def test_pulse_narrative_is_reused_within_the_refresh_window() -> None:
         params={"persist": "false"},
     )
     assert bulk_response.json()["narrative"] is None
+
+
+def _narrative_place(name: str) -> int:
+    destination_id = client.post(
+        "/destinations", json={"country_code": "HU", "name": f"{name} destination"}
+    ).json()["id"]
+    place_id = client.post(
+        f"/destinations/{destination_id}/places",
+        json={"name": name, "place_type": "destination"},
+    ).json()["id"]
+    client.post(
+        f"/places/{place_id}/signals",
+        json={
+            "signal_type": "occupancy",
+            "value": 80,
+            "unit": "percent",
+            "observed_at": "2026-08-20T10:00:00Z",
+            "source": "government",
+        },
+    )
+    return place_id
+
+
+def test_pulse_narrative_is_rewritten_when_the_scores_move() -> None:
+    place_id = _narrative_place("Narrative Drift Place")
+    with patch(
+        "tourism_pulse_api.routers.pulse.generate_narrative",
+        side_effect=["Written for the first scores.", "Written for the new scores."],
+    ) as mock_generate:
+        first = client.get(f"/places/{place_id}/pulse").json()
+        # New data moves demand: the old text would contradict the scores.
+        client.post(
+            f"/places/{place_id}/signals",
+            json={
+                "signal_type": "occupancy",
+                "value": 15,
+                "unit": "percent",
+                "observed_at": "2026-08-21T10:00:00Z",
+                "source": "government",
+            },
+        )
+        second = client.get(f"/places/{place_id}/pulse").json()
+
+    assert first["pulse"] != second["pulse"]
+    assert second["narrative"] == "Written for the new scores."
+    assert mock_generate.call_count == 2
+
+
+def test_pulse_narrative_freshness_counts_from_when_it_was_written() -> None:
+    place_id = _narrative_place("Narrative Age Place")
+    with patch(
+        "tourism_pulse_api.routers.pulse.generate_narrative",
+        side_effect=["Old text.", "New text."],
+    ) as mock_generate:
+        client.get(f"/places/{place_id}/pulse")
+        # Backdate the original to 7 hours ago and add a reuse 1 hour ago:
+        # the latest snapshot is recent, but the text itself is not.
+        db = SessionLocal()
+        try:
+            original = db.query(PulseSnapshot).filter(PulseSnapshot.place_id == place_id).one()
+            original.calculated_at = datetime.now(UTC) - timedelta(hours=7)
+            reuse = PulseSnapshot(
+                place_id=place_id,
+                calculated_at=datetime.now(UTC) - timedelta(hours=1),
+                **{
+                    column: getattr(original, column)
+                    for column in (
+                        "pulse",
+                        "demand",
+                        "capacity",
+                        "events",
+                        "environment",
+                        "risk",
+                        "economic",
+                        "pressure",
+                        "confidence_score",
+                        "confidence_coverage",
+                        "narrative",
+                    )
+                },
+            )
+            db.add(reuse)
+            db.commit()
+        finally:
+            db.close()
+        response = client.get(f"/places/{place_id}/pulse").json()
+
+    assert response["narrative"] == "New text."
+    assert mock_generate.call_count == 2
 
 
 def test_pulse_narrative_is_none_without_a_configured_provider() -> None:
