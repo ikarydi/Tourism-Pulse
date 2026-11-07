@@ -14,6 +14,18 @@ class Settings(BaseSettings):
     # (enable the YouTube Data API v3).
     youtube_api_key: str | None = None
 
+    # Optional: required only for ingestion.reddit. Create a "script" app at
+    # https://www.reddit.com/prefs/apps (free for non-commercial use).
+    # Reddit asks for "<platform>:<app id>:<version> (by /u/<username>)".
+    reddit_client_id: str | None = None
+    reddit_client_secret: str | None = None
+    reddit_user_agent: str = "server:tourism-pulse:1.0 (research; non-commercial)"
+
+    # Optional: required only for ingestion.bluesky. An app password from
+    # Bluesky's Settings > Privacy and security > App passwords.
+    bluesky_handle: str | None = None
+    bluesky_app_password: str | None = None
+
     # Booking.com/Airbnb have no accessible public API - these settings
     # exist so wiring real partner credentials later is a client.py diff,
     # not a new settings field. Unused today (ingestion.booking/airbnb are

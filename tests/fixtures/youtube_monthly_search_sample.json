@@ -1,0 +1,10 @@
+{
+  "kind": "youtube#searchListResponse",
+  "etag": "fixture-etag",
+  "nextPageToken": "CAEQAA",
+  "regionCode": "HU",
+  "pageInfo": {"totalResults": 4213, "resultsPerPage": 1},
+  "items": [
+    {"kind": "youtube#searchResult", "etag": "item-etag", "id": {"kind": "youtube#video", "videoId": "abc123"}}
+  ]
+}
