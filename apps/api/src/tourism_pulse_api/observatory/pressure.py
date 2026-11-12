@@ -273,6 +273,7 @@ class Ranker:
     def __init__(self, db: Session) -> None:
         latest: dict[tuple[str, str], tuple] = {}
         peers: dict[tuple[str, int, int], list[float]] = {}
+        history: dict[tuple[str, str], list[tuple[int, float]]] = {}
         for code, indicator, year, value, unit, source, observation_id in db.query(
             RegionalIndicator.nuts_code,
             RegionalIndicator.indicator,
@@ -283,10 +284,12 @@ class Ranker:
             RegionalIndicator.source_observation_id,
         ):
             peers.setdefault((indicator, year, len(code)), []).append(value)
+            history.setdefault((code, indicator), []).append((year, value))
             current = latest.get((code, indicator))
             if current is None or year > current[2]:
                 latest[(code, indicator)] = (value, unit, year, source, observation_id)
         self._latest = latest
+        self._history = {key: sorted(values) for key, values in history.items()}
         self._peers = {key: sorted(values) for key, values in peers.items()}
         self._names = dict(db.query(NutsRegion.code, NutsRegion.name))
 
@@ -324,3 +327,11 @@ class Ranker:
     def pressure_for_place(self, place: Place) -> PressureReading | None:
         codes = place_codes(place)
         return self.pressure_for_codes(codes) if codes else None
+
+    def codes_like(self, nuts_code: str) -> list[str]:
+        """Every region with data at the same NUTS level as `nuts_code`."""
+        return sorted({code for code, _ in self._latest if len(code) == len(nuts_code)})
+
+    def history(self, nuts_code: str, indicator: str) -> list[tuple[int, float]]:
+        """(year, value) for one region and indicator, oldest first."""
+        return self._history.get((nuts_code, indicator), [])

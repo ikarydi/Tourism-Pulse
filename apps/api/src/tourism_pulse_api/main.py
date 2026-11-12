@@ -4,8 +4,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
 from tourism_pulse_api.db.session import engine
+from tourism_pulse_api.public import public_mode_guard
 from tourism_pulse_api.routers.attention import router as attention_router
 from tourism_pulse_api.routers.attractions import router as attractions_router
+from tourism_pulse_api.routers.briefs import router as briefs_router
 from tourism_pulse_api.routers.demographics import router as demographics_router
 from tourism_pulse_api.routers.destinations import router as destinations_router
 from tourism_pulse_api.routers.economy import router as economy_router
@@ -43,6 +45,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Added last so it runs first: in public mode nothing that writes, spends
+# on an LLM or serves paid content reaches a router.
+app.middleware("http")(public_mode_guard)
+
 app.include_router(destinations_router)
 app.include_router(places_router)
 app.include_router(attractions_router)
@@ -58,6 +64,7 @@ app.include_router(explore_router)
 app.include_router(regions_router)
 app.include_router(forecasts_router)
 app.include_router(attention_router)
+app.include_router(briefs_router)
 app.include_router(economy_router)
 app.include_router(pulse_router)
 
