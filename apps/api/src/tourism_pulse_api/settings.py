@@ -5,6 +5,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str
 
+    # True when the API is reachable from the internet without a login:
+    # write endpoints, LLM-backed endpoints and the paid brief are refused
+    # (see tourism_pulse_api.public).
+    public_mode: bool = False
+
     # Optional: required only for the Ticketmaster events ingestion command.
     # Kept out of source control - set via .env or the environment.
     ticketmaster_api_key: str | None = None

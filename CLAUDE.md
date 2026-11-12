@@ -12,6 +12,7 @@ Tourism-pressure observatory and 12-month seasonal outlook for EU destinations (
   - write to the Crete Tourism Observatory
   - do 15 interviews (5 by 31 Dec 2026)
 - Gate (27 Mar 2027): live error vs the 4.96% backtest, and 3 pilots. If missed: stop product work, publish the paper, keep the record running.
+- Commercial direction (2026-11-12, `docs/strategy/06-product-direction.md`): free public Pressure Index, paid Destination Pressure Brief (`tourism_pulse_api.briefs`). First buyer: consultants and grant writers. A pilot is someone who paid.
 - Scope rule: do not build master-spec modules (Traveler DNA, Destination Twin, knowledge graph, agents, Tourism Studio) unless a pilot asks for one.
 
 ## Stack
@@ -27,11 +28,14 @@ make lint        # ruff check
 make format      # ruff format
 make run         # uvicorn API with reload
 make scheduler   # ingestion scheduler
+python -m tourism_pulse_api.briefs --place "Kriti" --out brief.html   # print to PDF from a browser
 ```
 - Web: `cd apps/web && npm install && npm run dev`
 - Read-only local DB for Claude: the `db` server in `.mcp.json` (postgres-mcp, restricted mode; needs `uv`). Claude Code asks once before enabling it.
 
 ## Rules
+- Paid output uses only sources marked `allowed` in `tourism_pulse_api/licensing.py`. Read a source's terms and record the page and date there before it can reach a brief.
+- Anything served to the internet runs with `PUBLIC_MODE=true` (`tourism_pulse_api/public.py`): no writes, no LLM calls, no brief.
 - The pulse engine is deterministic: no ML or LLM in scores. Every score carries confidence, freshness and lineage.
 - Airbnb and Booking.com stay stubs. No scraping of sites without a public API or licence.
 - Every record stores its source and fetch time. Each adapter gets a contract test that alerts on format changes.

@@ -56,6 +56,9 @@ def calculate_place_pulse(
     persist: bool = True,
     db: Session = Depends(get_db),
 ) -> PulseRead:
+    # A public visitor must not write snapshots or trigger the LLM narrative.
+    persist = persist and not settings.public_mode
+
     place = db.get(Place, place_id)
 
     if place is None:
